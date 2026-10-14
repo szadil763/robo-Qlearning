@@ -1,0 +1,15 @@
+# Arduino
+build/
+*.elf
+*.bin
+
+# OpenSCAD / impressão (versione só o .scad; STLs gerados ficam fora)
+*.stl
+*.3mf
+*.gcode
+
+# Editor / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
