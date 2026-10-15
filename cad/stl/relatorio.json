@@ -1,0 +1,93 @@
+[
+ {
+  "arquivo": "01_chassi.stl",
+  "qtd": 1,
+  "material": "PLA",
+  "mm": [
+   110.0,
+   85.0,
+   12.0
+  ],
+  "volume_cm3": 38.0,
+  "triangulos": 1732,
+  "nota": "Placa base com berços de motor, furos e fendas para abraçadeiras."
+ },
+ {
+  "arquivo": "02_patim.stl",
+  "qtd": 1,
+  "material": "PLA",
+  "mm": [
+   10.0,
+   10.0,
+   15.8
+  ],
+  "volume_cm3": 0.9,
+  "triangulos": 1264,
+  "nota": "Apoio liso. Cole o pino no furo da placa."
+ },
+ {
+  "arquivo": "03_suporte_sensor.stl",
+  "qtd": 1,
+  "material": "PLA",
+  "mm": [
+   26.0,
+   56.0,
+   14.0
+  ],
+  "volume_cm3": 5.7,
+  "triangulos": 694,
+  "nota": "Suporte do HC-SR04 (2 parafusos M3×6 no chassi)."
+ },
+ {
+  "arquivo": "06_suporte_oled.stl",
+  "qtd": 1,
+  "material": "PLA",
+  "mm": [
+   23.1,
+   60.0,
+   32.5
+  ],
+  "volume_cm3": 11.3,
+  "triangulos": 1020,
+  "nota": "Rampa inclinada com 4 pinos para o display e 2 furos de LED 5 mm."
+ },
+ {
+  "arquivo": "04_roda.stl",
+  "qtd": 2,
+  "material": "PLA",
+  "mm": [
+   40.0,
+   40.0,
+   8.0
+  ],
+  "volume_cm3": 5.4,
+  "triangulos": 1408,
+  "nota": "Aro e cubo com furo em D de 3 mm."
+ },
+ {
+  "arquivo": "05_pneu_tpu.stl",
+  "qtd": 2,
+  "material": "TPU 95A (opcional)",
+  "mm": [
+   42.0,
+   42.0,
+   5.2
+  ],
+  "volume_cm3": 2.2,
+  "triangulos": 384,
+  "nota": "Pneu de borracha. Pode usar um O-ring ou elástico no lugar."
+ },
+ {
+  "arquivo": "08_teste_ajuste.stl",
+  "qtd": 1,
+  "material": "PLA",
+  "mm": [
+   70.0,
+   40.0,
+   26.0
+  ],
+  "volume_cm3": 13.7,
+  "triangulos": 1072,
+  "nota": "IMPRIMA PRIMEIRO: testa motor, olhos do sensor, pino do patim, parafuso e eixo em D."
+ }
+]

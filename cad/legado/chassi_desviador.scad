@@ -1,3 +1,5 @@
+// LEGADO: primeira versão em OpenSCAD, nunca renderizada nem impressa. Use cad/gerar_stl.py (fonte atual dos STL).
+// As medidas aqui podem divergir das do gerador em Python.
 // Chassi paramétrico do Robô Desviador de Obstáculos
 // OpenSCAD. Eixo X = frente do robô. Unidades em mm.
 //

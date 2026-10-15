@@ -3,8 +3,9 @@ build/
 *.elf
 *.bin
 
-# OpenSCAD / impressão (versione só o .scad; STLs gerados ficam fora)
+# Impressão: os STL de cad/stl/ SÃO versionados (peças prontas); outros ficam fora
 *.stl
+!cad/stl/*.stl
 *.3mf
 *.gcode
 

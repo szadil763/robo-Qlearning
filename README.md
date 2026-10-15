@@ -33,13 +33,17 @@ robo-desviador-ql/
 ├── README.md
 ├── CLAUDE.md                  contexto para trabalhar com Claude Code
 ├── firmware/robo_desviador/   código Arduino (ESP32): .ino + painel.h (Wi-Fi)
-├── cad/chassi_desviador.scad  chassi paramétrico (OpenSCAD)
+├── cad/gerar_stl.py           gerador paramétrico das peças (Python) → cad/stl/*.stl
+├── cad/stl/                   STL prontos para imprimir (+ relatorio.json)
+├── cad/README.md              guia de impressão (orientação, material, peça de teste)
+├── cad/legado/                primeira versão em OpenSCAD (não usada)
 └── docs/
     ├── lista-de-materiais.md
     ├── ligacoes.md            pinagem e alimentação
     ├── roteiro-de-aula.md     2 aulas de 50 min
     ├── atividades/            fichas de experimento para os alunos
-    └── ilustracao-3d.html     ilustração 3D interativa (abre no navegador)
+    ├── ilustracao-3d.html     ilustração 3D interativa (abre no navegador)
+    └── montagem-3d.html       montagem passo a passo, peça por peça (3D)
 ```
 
 ## Para a sala de aula

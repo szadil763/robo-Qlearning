@@ -11,7 +11,7 @@ Código, comentários, documentação e mensagens em **português do Brasil**.
 ## Stack
 - ESP32 DevKit, Arduino-ESP32 core 3.x (usa `ledcAttach`/`ledcWrite` com pino; no core 2.x a API é diferente).
 - Bibliotecas: Adafruit SSD1306, Adafruit GFX, Preferences (nativa).
-- Chassi em OpenSCAD, impressão em PLA (TPU opcional para pneus).
+- Peças impressas geradas por `cad/gerar_stl.py` (Python: trimesh + manifold3d + shapely + mapbox-earcut), saída em `cad/stl/`. PLA; TPU opcional para pneus. O `.scad` em `cad/legado/` é antigo e não é mantido.
 
 ## Regras do projeto
 - Manter o algoritmo **tabular e legível**. Não trocar por rede neural sem pedido explícito.
@@ -32,6 +32,10 @@ Código, comentários, documentação e mensagens em **português do Brasil**.
 - Parâmetros editáveis: `alfa`, `gama`, `epsDecai` e as recompensas (`rBateu`…`rRe`) são variáveis no firmware (valores `*_PADRAO` no bloco AJUSTES), editáveis pelo painel Wi-Fi (`painel.h`) e pelo Laboratório da ilustração 3D. Limites dos controles: manter iguais nos três lugares (3D, `rotaAjustar()` e a página do painel).
 - Formato do cérebro (JSON `robo-qlearning-q`, 4 estados × 4 ações) é compartilhado entre simulador e robô: se mudar o tamanho da tabela Q, atualizar `exportBrain/importBrain` (HTML) e `cerebroJson/lerCerebro` (`painel.h`).
 - Painel Wi-Fi e fichas nunca foram testados no robô real (só compilação com stubs e testes do simulador).
+
+- STL e montagem 3D: **nunca editar os STL à mão**. Mudou medida/furo/pino no `gerar_stl.py`? Rode `python3 cad/gerar_stl.py` e depois `python3 cad/montar_pagina.py` (recria `docs/montagem-3d.html` a partir de `docs/montagem-3d.template.html`) e versione os STL. Se mudar pinos de parafuso ou componentes, atualizar também os passos e a lista de materiais.
+- As peças compradas na ilustração de montagem (motor, pilhas, placa, OLED, LEDs) são formas simples com medidas típicas; **não foram conferidas com os componentes reais**. A peça `08_teste_ajuste.stl` deve ser impressa antes do resto. Nenhum STL foi impresso ainda.
+- Espaço entre os suportes do OLED e do sensor: 72 mm para o suporte de 2 pilhas 18650.
 
 ## Projeto irmão
 Robô 2 (identificador de gestos/cartões, aprendizado supervisionado) será um repositório separado. Manter o mesmo padrão de pastas.

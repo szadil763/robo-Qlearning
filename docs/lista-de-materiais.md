@@ -17,8 +17,10 @@ Valores em reais são **estimativas aproximadas** para orçamento. Confira os pr
 | 1 | Módulo step-down (MP1584 ou LM2596) ajustado em 5 V | Alimenta ESP32 e sensor | 10 a 20 |
 | 1 | Chave liga/desliga | Na linha da bateria | 3 |
 | 1 | Protoboard pequena ou placa perfurada | Protoboard para testes; placa perfurada para versão final | 10 a 20 |
-| – | Jumpers, abraçadeiras de nylon, parafusos M3 | Fixação dos motores e placas | 15 |
-| ~150 g | Filamento PLA | Chassi e suportes | – |
+| – | Jumpers, 2 abraçadeiras de nylon (~2,5 mm), fita dupla-face ou velcro | Fixação dos motores, das pilhas e da placa | 10 |
+| 2 + 4 | Parafusos M3×8 (2, suporte do sensor) e M3×6 (4, suporte do OLED) | Autorroscantes nos furos-guia de 2,7 mm do chassi | 5 |
+| 2 | Pneus de TPU impressos (opcional) | Ou um O-ring/elástico grosso de ~36 mm interno | – |
+| ~150 g | Filamento PLA | Chassi, rodas e suportes (arquivos em `cad/stl/`) | – |
 
 **Arena:** chapa de MDF (~1,2 × 0,8 m de piso e paredes de ~15 cm) ou papelão duro. Pode ser cortada no laser.
 

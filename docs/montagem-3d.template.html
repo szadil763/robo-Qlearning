@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Montagem do Robô</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Montagem passo a passo. Laranja = peça impressa em 3D (PLA); outras cores = peças compradas.
+   As malhas das peças impressas vêm de cad/montagem.json (gerado por cad/gerar_stl.py): é a geometria real dos STL. */
+:root{
+  --bg:#EAEEF1; --surface:#F7F9FA; --fg:#14202A; --muted:#566673; --line:#C9D3DA;
+  --accent:#E0530B; --accent-ink:#FFFFFF; --accent-soft:#FBE3D5; --good:#16885A;
+  --stage-hi:#F1F4F6; --stage-lo:#D4DCE2;
+  --display:'Segoe UI',system-ui,sans-serif; --body:'Segoe UI',system-ui,sans-serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151B; --surface:#16212A; --fg:#E6EDF2; --muted:#93A4B1; --line:#2A3946;
+    --accent:#FF7A33; --accent-ink:#1A0D04; --accent-soft:#3A2113; --good:#3DD598;
+    --stage-hi:#23323E; --stage-lo:#111A21; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151B; --surface:#16212A; --fg:#E6EDF2; --muted:#93A4B1; --line:#2A3946;
+  --accent:#FF7A33; --accent-ink:#1A0D04; --accent-soft:#3A2113; --good:#3DD598;
+  --stage-hi:#23323E; --stage-lo:#111A21; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.45}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;padding:16px;max-width:1400px;margin:0 auto;min-height:100vh}
+@media (max-width:900px){.app{grid-template-columns:1fr;padding:12px 16px}}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);
+  background:radial-gradient(ellipse at 50% 35%,var(--stage-hi),var(--stage-lo));height:calc(100vh - 32px);min-height:380px;max-height:820px}
+@media (max-width:900px){.stage{height:62vh}}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+.hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);pointer-events:none;background:color-mix(in srgb,var(--surface) 80%,transparent);padding:3px 8px;border-radius:8px}
+.tag{position:absolute;left:12px;top:10px;font-family:var(--mono);font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--surface) 80%,transparent);padding:3px 8px;border-radius:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;align-self:start}
+h1{font-family:var(--display);font-size:20px;margin:0}
+h2{font-family:var(--display);font-size:18px;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:0}
+.steps{display:flex;flex-wrap:wrap;gap:6px}
+.steps button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:600 13px var(--body);cursor:pointer}
+.steps button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.steps button.done{border-color:var(--good);color:var(--good)}
+.steps button:focus-visible,.nav button:focus-visible,.lista li:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.txt{font-size:14px}
+.txt p{margin:0 0 8px}
+.lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.lista li{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;border:1px solid var(--line);font-size:13px;cursor:default}
+.lista li:hover,.lista li.hl{background:var(--accent-soft);border-color:var(--accent)}
+.lista .q{font-family:var(--mono);font-weight:600;min-width:28px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.25)}
+.nav{display:flex;gap:8px}
+.nav button{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:600 14px var(--body);cursor:pointer}
+.nav button.p{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.nav button:disabled{opacity:.4;cursor:default}
+label.sl{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+label.sl input{flex:1;accent-color:var(--accent)}
+.aviso{font-size:12.5px;border-left:3px solid var(--accent);background:var(--accent-soft);padding:8px 10px;border-radius:0 8px 8px 0}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+td.n{font-family:var(--mono)}
+details summary{cursor:pointer;font-weight:600;font-size:13px}
+.leg{display:flex;gap:12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Robô em 3D. Arraste para girar, role para aproximar."></canvas>
+    <div class="tag" id="tag">passo 0</div>
+    <div class="hint">arraste para girar · role ou pince para aproximar</div>
+  </div>
+  <aside class="panel">
+    <div>
+      <h1>Montagem do Robô Desviador</h1>
+      <p class="sub">Peça por peça. As peças <b style="color:var(--accent)">laranja</b> são impressas (geometria real dos arquivos STL).</p>
+    </div>
+    <div class="steps" id="steps" role="tablist" aria-label="Passos"></div>
+    <div>
+      <h2 id="titulo"></h2>
+    </div>
+    <div class="txt" id="texto"></div>
+    <ul class="lista" id="lista"></ul>
+    <label class="sl"><span>Explodir</span><input type="range" id="ex" min="0" max="100" value="100" aria-label="Afastar as peças"><span id="exv" style="font-family:var(--mono);min-width:34px;text-align:right">100%</span></label>
+    <div class="nav"><button id="ant">← Anterior</button><button id="prox" class="p">Próximo →</button></div>
+    <details id="imp"><summary>Peças para imprimir (arquivos STL)</summary><div id="tabimp" style="margin-top:8px"></div></details>
+    <div class="leg"><span><i class="sw" style="background:#E8742A"></i> impresso</span><span><i class="sw" style="background:#2B3A55"></i> eletrônica</span><span><i class="sw" style="background:#9AA5AE"></i> metal / parafuso</span></div>
+  </aside>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DADOS = /*#dados*/null;
+const REL = /*#relatorio*/null;
+</script>
+<script>
+(function(){
+const P = DADOS.params, TH = P.OLED_INCL*Math.PI/180;
+const COR = {imp:0xE8742A, azul:0x2B3A55, preto:0x1b1f24, metal:0x9AA5AE, ouro:0xC9A227, verde:0x1E7F4F, vermelho:0xC23B3B, cinza:0x4a5560, pilha:0x3B7DD8, borracha:0x24282c, nylon:0xF2F2EC, led_v:0x2fd37a, led_r:0xff4a4a};
+
+// ---------- cena ----------
+const cv = document.getElementById('cv'), stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, 1, 1, 3000);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899a6, 0.85));
+const sol = new THREE.DirectionalLight(0xffffff, 0.8); sol.position.set(120,220,160); scene.add(sol);
+const sol2 = new THREE.DirectionalLight(0xffffff, 0.3); sol2.position.set(-150,80,-120); scene.add(sol2);
+const grade = new THREE.GridHelper(400, 20, 0x8899a6, 0x8899a6); grade.position.y = -P.VAO; grade.material.opacity = .25; grade.material.transparent = true; scene.add(grade);
+// robô: coordenadas X frente, Y esquerda, Z cima (mm). Girar -90° em X leva Z para o "para cima" do three.js.
+const robo = new THREE.Group(); robo.rotation.x = -Math.PI/2; scene.add(robo);
+
+// ---------- ajudantes ----------
+const mats = {};
+function mat(c, opts){ const k = c+JSON.stringify(opts||{}); return mats[k] || (mats[k] = new THREE.MeshStandardMaterial(Object.assign({color:c, roughness:.55, metalness:.05, flatShading:true}, opts||{}))); }
+function B(sx,sy,sz,cx,cy,cz,c,o){ const m = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), mat(c,o)); m.position.set(cx,cy,cz); return m; }
+function C(r,h,eixo,cx,cy,cz,c,o,seg){ const m = new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg||28), mat(c,o)); if(eixo==='x') m.rotation.z = Math.PI/2; if(eixo==='z') m.rotation.x = Math.PI/2; m.position.set(cx,cy,cz); return m; }
+function decodificar(d, cor){
+  const v = new Float32Array(Uint8Array.from(atob(d.v), c=>c.charCodeAt(0)).buffer);
+  const f = new Uint32Array(Uint8Array.from(atob(d.f), c=>c.charCodeAt(0)).buffer);
+  let g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(v,3)); g.setIndex(new THREE.BufferAttribute(f,1));
+  g = g.toNonIndexed(); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat(cor,{roughness:.6}));
+  const ar = new THREE.LineSegments(new THREE.EdgesGeometry(g, 35), new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:.22}));
+  const gp = new THREE.Group(); gp.add(m); gp.add(ar); return gp;
+}
+function grupo(...f){ const g = new THREE.Group(); f.forEach(x=>g.add(x)); return g; }
+const yR = P.BASE_L/2 + P.FOLGA_RODA_PLACA + P.RODA_L/2;     // centro das rodas em |Y|
+const zM = P.BASE_E + P.N20_H/2, xM = P.MOTOR_X, base = P.BASE_E;
+const xp = P.BASE_C/2 - P.SUP_PAREDE - 2.0;                  // início do rebaixo do suporte do sensor
+const zSens = base + P.SUP_H/2;
+const zBase = base + 3.0, x0 = P.OLED_X_TRAS;
+
+// ---------- peças compradas (formas simples) ----------
+function motor(s){
+  const yc = s*(P.BASE_L/2 - 12.0);
+  return grupo(B(12,24,10,xM,yc,zM,0xB9C0C6,{metalness:.6,roughness:.35}),
+               B(12,8,10,xM,s*(P.BASE_L/2-4),zM,0xC9A227,{metalness:.5,roughness:.4}),
+               C(1.5,10,'y',xM,s*(P.BASE_L/2+5),zM,0xdddddd,{metalness:.7,roughness:.3},16),
+               B(3,6,2,xM,s*(P.BASE_L/2-24-3),zM,0xC23B3B));
+}
+function abracadeira(s){
+  const y = s*(P.BASE_L/2 - P.N20_C/2), xo = P.N20_W/2 + 2.4 + 2.2, zt = base + P.N20_H + 1.2;
+  return grupo(B(2*xo+3,3.2,0.9,xM,y,zt,COR.nylon), B(0.9,3.2,zt+1.4,xM-xo,y,(zt-1.4)/2,COR.nylon), B(0.9,3.2,zt+1.4,xM+xo,y,(zt-1.4)/2,COR.nylon), B(2*xo+3,3.2,0.9,xM,y,-1.4,COR.nylon));
+}
+function parafuso(x,y,zTopo,comp){ return grupo(C(2.9,1.6,'z',x,y,zTopo+.8,COR.metal,{metalness:.7},20), C(1.5,comp,'z',x,y,zTopo-comp/2,COR.metal,{metalness:.7},12)); }
+function hcsr04(){
+  const xc = xp + 1.0, g = grupo(B(2.0,45,20,xc,0,zSens,COR.azul));
+  for(const s of [-1,1]) g.add(C(8,12,'x',xc+1+6,s*P.OLHO_DIST/2,zSens,COR.metal,{metalness:.6,roughness:.35},32));
+  g.add(B(1.6,10,2.5,xc-1.4,0,zSens-10.5,COR.preto));   // pinos (4)
+  g.add(B(6,12,6,xc-3,0,zSens-5,COR.preto));
+  return g;
+}
+function pilhas(){
+  const xa = -29, xb = 41, xc = (xa+xb)/2, L = xb-xa, zT = base;
+  const g = grupo(B(L,39,3,xc,0,zT+1.5,COR.cinza));
+  for(const s of [-1,1]){
+    g.add(C(9.2,L-4,'x',xc,s*10.2,zT+3+9.2,COR.pilha,{roughness:.4},32));
+    g.add(C(4,1.4,'x',xb-1.5,s*10.2,zT+3+9.2,COR.metal,{metalness:.8},16));
+  }
+  g.add(B(2,39,12,xa+1,0,zT+9,COR.cinza)); g.add(B(2,39,12,xb-1,0,zT+9,COR.cinza));
+  return g;
+}
+function placaEletronica(){
+  const xc = 6, z0 = base + 3 + 18.4 + 1;     // topo das pilhas
+  const g = grupo(B(62,40,1.6,xc,0,z0+.8,COR.verde));
+  g.add(B(51,28,1.6,xc+2,0,z0+1.6+4,COR.azul));                       // ESP32
+  g.add(B(18,16,5,xc+2-14,0,z0+1.6+6.8,COR.metal,{metalness:.6}));    // blindagem do módulo
+  g.add(B(51,2.5,8.5,xc+2,13.6,z0+1.6+1.6+1,COR.preto)); g.add(B(51,2.5,8.5,xc+2,-13.6,z0+1.6+1.6+1,COR.preto)); // pinos
+  g.add(B(20,20,1.6,xc-23,-8,z0+1.6+5,COR.vermelho));                 // TB6612
+  g.add(B(22,10,6,xc-22,12,z0+1.6+3,0xC23B3B,{roughness:.4}));       // step-down
+  g.add(B(6,6,3.5,xc+26,-14,z0+1.6+1.8,COR.preto)); g.add(B(6,6,3.5,xc+26,14,z0+1.6+1.8,COR.preto));    // botões
+  g.add(C(1.6,2,'z',xc+26,-14,z0+1.6+4.2,COR.cinza)); g.add(C(1.6,2,'z',xc+26,14,z0+1.6+4.2,COR.cinza));
+  g.add(B(10,6,8,xc-30,-15,z0+1.6+4,COR.preto));                       // chave
+  return g;
+}
+function localSlope(){ const s = new THREE.Group(); s.position.set(x0,0,zBase); s.rotation.y = -TH; return s; }
+function oledModulo(){
+  const s = localSlope(), sc = 18.5;
+  s.add(B(27.8,27,1.6,sc,0,0.8,COR.azul)); s.add(B(25,13.5,1.2,sc+1,0,2.2,0x0a0d12,{roughness:.2}));
+  s.add(B(2.5,10,2.5,sc-11.9-3.5,0,1.6+1.2,COR.preto));
+  return grupo(s);
+}
+function led(sy,cor){
+  const s = localSlope(), sc = 18.5;
+  const g = grupo(C(2.5,8,'z',sc,sy*22.5,1.0,cor,{roughness:.2,transparent:true,opacity:.92},20), C(3.1,1,'z',sc,sy*22.5,-2.2,cor,{roughness:.2},20));
+  s.add(g); return grupo(s);
+}
+function fios(){
+  const g = new THREE.Group(); const zb = base+3+18.4+2.6;
+  function tubo(pts,cor){ const c = new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2]))); g.add(new THREE.Mesh(new THREE.TubeGeometry(c,24,.7,6), mat(cor,{roughness:.5}))); }
+  for(const s of [-1,1]) tubo([[-28,s*6,zb],[-30,s*14,12],[xM,s*(P.BASE_L/2-24),zM+1]], s>0?0xC23B3B:0x222222);
+  tubo([[28,0,zb],[40,-4,24],[xp-2,-4,zSens-9]], 0xE0B000);
+  tubo([[30,5,zb],[42,10,22],[xp-2,3,zSens-9]], 0x2fd37a);
+  tubo([[-8,-14,zb],[-30,-22,26],[x0+10,-20,zBase+6]], 0x3B7DD8);
+  tubo([[-6,-14,zb],[-30,-24,28],[x0+10,-18,zBase+6]], 0xffffff);
+  return g;
+}
+
+// ---------- definição das peças ----------
+const n = [-Math.sin(TH), 0, Math.cos(TH)];                  // normal da rampa do OLED
+const pecas = [];
+function add(id, nome, passo, vec, g, imp, qtd){ g.visible = false; robo.add(g); pecas.push({id, nome, passo, vec, g, imp, qtd, e:1}); return g; }
+const imp = (k,c)=>decodificar(DADOS.partes[k], c||COR.imp);
+add('chassi','Chassi (01_chassi.stl)',1,[0,0,45], imp('chassi'), true, 1);
+add('patim','Patim (02_patim.stl)',2,[0,0,-45], imp('patim'), true, 1);
+for(const s of [1,-1]) add('motor'+s,'Motor N20 '+(s>0?'esquerdo':'direito'),3,[0,s*38,0], motor(s), false, 1);
+add('abr','Abraçadeira de nylon',3,[0,0,45], grupo(abracadeira(1),abracadeira(-1)), false, 2);
+add('roda_d','Roda (04_roda.stl) – esquerda',4,[0,38,0], imp('roda_d'), true, 1);
+add('roda_e','Roda (04_roda.stl) – direita',4,[0,-38,0], imp('roda_e'), true, 1);
+add('pneu_d','Pneu TPU opcional (05_pneu_tpu.stl)',4,[0,62,0], imp('pneu_d',COR.borracha), true, 2);
+add('pneu_e','',4,[0,-62,0], imp('pneu_e',COR.borracha), true, 0);
+add('sup_sens','Suporte do sensor (03_suporte_sensor.stl)',5,[0,0,45], imp('suporte_sensor'), true, 1);
+add('parafsens','Parafuso M3×8',5,[0,0,60], grupo(parafuso(xp-P.FLANGE_SENS/2+1.0,20,base*2,8), parafuso(xp-P.FLANGE_SENS/2+1.0,-20,base*2,8)), false, 2);
+add('hcsr04','Sensor HC-SR04',5,[-40,0,0], hcsr04(), false, 1);
+add('pilhas','Suporte de pilhas 2×18650 (com pilhas)',6,[0,0,50], pilhas(), false, 1);
+add('placa','Placa com ESP32, TB6612, step-down, chave e 2 botões',7,[0,0,55], placaEletronica(), false, 1);
+add('sup_oled','Suporte do OLED (06_suporte_oled.stl)',8,[0,0,50], imp('suporte_oled'), true, 1);
+const xs = [x0+4, x0+22], ys = [-24, 24], ps = [];
+for(const x of xs) for(const y of ys) ps.push(parafuso(x,y,zBase+1.6,6));
+add('parafoled','Parafuso M3×6',8,[0,0,70], grupo(...ps), false, 4);
+add('oled','Display OLED 0,96" (4 pinos)',8,n.map(v=>v*30), oledModulo(), false, 1);
+add('led_v','LED verde 5 mm',8,n.map(v=>v*22), led(1,COR.led_v), false, 1);
+add('led_r','LED vermelho 5 mm',8,n.map(v=>v*22), led(-1,COR.led_r), false, 1);
+add('fios','Fios jumper e resistores (ver ligacoes.md)',9,[0,0,0], fios(), false, 0);
+
+// ---------- passos ----------
+const PASSOS = [
+ {t:'Conheça as peças', cam:[40,26,470,[0,0,0]], todas:true,
+  h:'<p>Estas são as peças impressas em 3D. <b>Imprima primeiro o corpo de prova</b> (<code>08_teste_ajuste.stl</code>, ~15 min) e confira se o motor, os olhos do sensor, o pino do patim e o eixo em D encaixam. Se ficar justo ou frouxo demais, mude as folgas no começo de <code>cad/gerar_stl.py</code> e gere de novo.</p><p>Use o controle <b>Explodir</b> para afastar as peças. Passe o mouse em um item da lista para destacá-lo.</p>'},
+ {t:'1. Chassi', cam:[-35,34,300,[0,0,6]],
+  h:'<p>A placa base já traz os <b>berços dos motores</b>, as fendas das abraçadeiras, os furos de fios e os furos-guia (ø 2,7 mm) dos parafusos. Remova rebarbas e a “pata de elefante” da primeira camada com uma lâmina.</p>'},
+ {t:'2. Patim (apoio da frente)', cam:[55,-12,210,[30,0,-2]],
+  h:'<p>Empurre o pino do patim pelo furo da placa, por baixo, e passe uma gota de cola (cola de cianoacrilato ou cola quente). A ponta esférica lisa desliza no chão e mantém o robô nivelado: a roda grande fica atrás e o patim na frente.</p>'},
+ {t:'3. Motores N20', cam:[-30,52,230,[-17,0,10]],
+  h:'<p>Deslize cada motor para dentro do berço, com a <b>caixa de redução e o eixo para fora</b>. O motor deve entrar com leve pressão. Passe uma abraçadeira de nylon por baixo da placa, pelas duas fendas, e aperte por cima do motor. Os fios saem pelo furo do fundo do berço.</p><p class="aviso">Motores de fornecedores diferentes têm medidas um pouco diferentes: confira com o corpo de prova.</p>'},
+ {t:'4. Rodas e pneus', cam:[-55,22,300,[-17,0,10]],
+  h:'<p>Encaixe o eixo em D do motor no furo em D da roda (a face plana do eixo alinha com a plana do furo). Deixe a roda a cerca de 1,5 mm da placa. Se usar o <b>pneu de TPU</b>, estique-o sobre a roda até ele assentar entre as duas bordas. Sem TPU, serve um O-ring ou um elástico grosso.</p>'},
+ {t:'5. Sensor ultrassônico', cam:[60,26,230,[45,0,14]],
+  h:'<p>Fixe o suporte com <b>2 parafusos M3×8</b> na aba (os furos-guia da placa seguram a rosca). Depois encaixe o <b>HC-SR04</b> pela parte de trás: os dois “olhos” (emissor e receptor) atravessam as aberturas redondas e os pinos descem pela fenda.</p>'},
+ {t:'6. Baterias', cam:[-40,40,300,[0,0,12]],
+  h:'<p>Cole o suporte das 2 pilhas 18650 no centro da placa, com fita dupla-face ou velcro. Há <b>72 mm</b> livres entre o suporte do OLED e o do sensor: meça o seu suporte antes de colar. Ainda <b>não coloque as pilhas</b>.</p>'},
+ {t:'7. Eletrônica', cam:[-40,46,280,[0,0,20]],
+  h:'<p>Prenda a placa perfurada (ou protoboard pequena) em cima das pilhas. Nela ficam o <b>ESP32</b>, o <b>driver TB6612</b>, o <b>step-down</b> ajustado em 5 V (regule com o multímetro antes de ligar o ESP32), a chave e os <b>2 botões</b>. Mantenha a antena do ESP32 livre.</p>'},
+ {t:'8. Display, LEDs e suporte do OLED', cam:[-150,30,250,[-38,0,20]],
+  h:'<p>Aparafuse o suporte com <b>4 parafusos M3×6</b>. Encaixe o display OLED nos 4 pinos da rampa (os pinos do display passam pela fenda) e os <b>2 LEDs de 5 mm</b> nos furos. Em cada LED vai um resistor de 220 Ω. O ângulo de 55° deixa o aluno ler a tela de pé, por trás do robô.</p>'},
+ {t:'9. Fiação', cam:[-35,48,260,[0,0,18]],
+  h:'<p>Ligue tudo conforme <code>docs/ligacoes.md</code>. <b>Atenção:</b> o ECHO do HC-SR04 é 5 V e o ESP32 é 3,3 V, então o divisor de tensão (1 kΩ + 2 kΩ) é obrigatório. Se um motor girar ao contrário, inverta seus dois fios.</p><p class="aviso">Primeiro teste com as rodas no ar e <b>sem as pilhas</b> (USB). Só depois coloque as pilhas e a chave.</p>'},
+ {t:'Robô pronto', cam:[-35,22,320,[0,0,8]], todas:true, giro:true,
+  h:'<p>Pronto! Coloque o robô na arena e ligue a chave. O display mostra o que ele <b>percebe</b>, <b>escolhe</b>, <b>faz</b> e <b>aprende</b> a cada passo. Arraste o controle <b>Explodir</b> para rever como tudo se encaixa.</p>'}
+];
+
+const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// ---------- interface ----------
+const elSteps = document.getElementById('steps'), elT = document.getElementById('titulo'), elTx = document.getElementById('texto'), elL = document.getElementById('lista');
+const elEx = document.getElementById('ex'), elExv = document.getElementById('exv'), elTag = document.getElementById('tag');
+const bAnt = document.getElementById('ant'), bProx = document.getElementById('prox');
+let passo = 0, ex = 1, alvoEx = 1, destaque = null, entrada = 0;
+PASSOS.forEach((p,i)=>{ const b = document.createElement('button'); b.textContent = i===0?'•':(i===PASSOS.length-1?'✓':i); b.title = p.t; b.setAttribute('aria-label', p.t); b.onclick = ()=>ir(i); elSteps.appendChild(b); });
+
+function corDe(p){ return p.imp ? '#E8742A' : '#2B3A55'; }
+function ir(i){
+  passo = Math.max(0, Math.min(PASSOS.length-1, i));
+  const ps = PASSOS[passo];
+  elT.textContent = ps.t; elTx.innerHTML = ps.h; elTag.textContent = 'passo '+passo+' / '+(PASSOS.length-1);
+  [...elSteps.children].forEach((b,k)=>{ b.classList.toggle('on', k===passo); b.classList.toggle('done', k<passo); b.setAttribute('aria-current', k===passo?'step':'false'); });
+  bAnt.disabled = passo===0; bProx.disabled = passo===PASSOS.length-1;
+  elL.innerHTML = '';
+  const agrup = pecas.filter(p => ps.todas ? (p.qtd>0 && (passo!==0 || p.imp)) : p.passo===passo && p.qtd>0);
+  agrup.forEach(p=>{ const li = document.createElement('li'); li.tabIndex = 0; li.dataset.id = p.id;
+    li.innerHTML = '<i class="sw" style="background:'+corDe(p)+'"></i><span class="q">'+p.qtd+'×</span><span>'+p.nome+'</span>';
+    li.onmouseenter = li.onfocus = ()=>realcar(p.id); li.onmouseleave = li.onblur = ()=>realcar(null); elL.appendChild(li); });
+  alvoEx = passo===0 ? 1 : 0; ex = 1; entrada = (passo===0 || reduzido) ? 0 : 1; if(reduzido) ex = alvoEx;
+  elEx.value = Math.round(alvoEx*100); elExv.textContent = elEx.value+'%';
+  elEx.disabled = false;
+  camAlvo = {az:ps.cam[0]*Math.PI/180, el:ps.cam[1]*Math.PI/180, d:ps.cam[2], t:new THREE.Vector3(ps.cam[3][0], ps.cam[3][2], -ps.cam[3][1])};
+  auto = !!ps.giro;
+}
+function realcar(id){ destaque = id; }
+bAnt.onclick = ()=>ir(passo-1); bProx.onclick = ()=>ir(passo+1);
+elEx.oninput = ()=>{ alvoEx = elEx.value/100; ex = alvoEx; entrada = 0; elExv.textContent = elEx.value+'%'; };
+addEventListener('keydown', e=>{ if(e.key==='ArrowRight') ir(passo+1); if(e.key==='ArrowLeft') ir(passo-1); });
+
+// tabela de impressão
+(function(){
+  let h = '<table><tr><th>Arquivo</th><th>Qtd</th><th>Material</th><th>Tamanho (mm)</th></tr>';
+  REL.forEach(r=>{ h += '<tr><td class="n">'+r.arquivo+'</td><td class="n">'+r.qtd+'</td><td>'+r.material+'</td><td class="n">'+r.mm.join('×')+'</td></tr>'; });
+  document.getElementById('tabimp').innerHTML = h+'</table><p class="sub" style="margin-top:8px">Veja <code>cad/README.md</code> para orientação, altura de camada e preenchimento.</p>';
+})();
+
+// ---------- câmera orbital ----------
+let cam = {az:40*Math.PI/180, el:26*Math.PI/180, d:330, t:new THREE.Vector3(0,8,0)}, camAlvo = null, auto = false;
+let arrasto = null, toques = new Map(), dist0 = 0;
+cv.addEventListener('pointerdown', e=>{ cv.setPointerCapture(e.pointerId); toques.set(e.pointerId,{x:e.clientX,y:e.clientY}); arrasto = {x:e.clientX,y:e.clientY}; camAlvo = null; auto = false; if(toques.size===2){ const [a,b]=[...toques.values()]; dist0 = Math.hypot(a.x-b.x,a.y-b.y); } });
+cv.addEventListener('pointermove', e=>{
+  if(!toques.has(e.pointerId)) return; toques.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(toques.size===2){ const [a,b]=[...toques.values()]; const d = Math.hypot(a.x-b.x,a.y-b.y); if(dist0) cam.d = Math.max(120, Math.min(700, cam.d*dist0/d)); dist0 = d; return; }
+  if(!arrasto) return; cam.az -= (e.clientX-arrasto.x)*.008; cam.el = Math.max(-.2, Math.min(1.45, cam.el + (e.clientY-arrasto.y)*.008)); arrasto = {x:e.clientX,y:e.clientY};
+});
+function solta(e){ toques.delete(e.pointerId); arrasto = toques.size===1 ? {x:[...toques.values()][0].x,y:[...toques.values()][0].y} : null; dist0 = 0; }
+cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+cv.addEventListener('wheel', e=>{ e.preventDefault(); cam.d = Math.max(120, Math.min(700, cam.d*(1+Math.sign(e.deltaY)*.08))); camAlvo = null; }, {passive:false});
+
+function ajusta(){ const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix(); }
+new ResizeObserver(ajusta).observe(stage); ajusta();
+
+// ---------- laço ----------
+let tAnt = performance.now();
+function atualizaPecas(){
+  const ps = PASSOS[passo];
+  for(const p of pecas){
+    let vis, e = 0;
+    if(ps.todas){ vis = passo!==0 || p.imp; e = ex; }
+    else if(p.passo<passo){ vis = true; e = 0; }
+    else if(p.passo===passo){ vis = true; e = ex; }
+    else vis = false;
+    p.g.visible = vis;
+    p.g.position.set(p.vec[0]*e, p.vec[1]*e, p.vec[2]*e);
+    const atual = p.passo===passo || ps.todas;
+    const dest = destaque && (p.id===destaque || (destaque==='pneu_d' && p.id==='pneu_e') || (destaque==='abr' && false));
+    p.g.traverse(o=>{ if(o.isMesh){ const m = o.material; if(!o.userData.cl){ o.userData.cl = true; o.material = m.clone(); } o.material.emissive = o.material.emissive || new THREE.Color(0); o.material.emissive.setHex(dest?0x553311:0x000000); } });
+  }
+}
+function quadro(t){
+  const dt = Math.min(.05,(t-tAnt)/1000); tAnt = t;
+  if(camAlvo){ const k = reduzido?1:1-Math.pow(.001,dt);
+    let da = camAlvo.az-cam.az; da = Math.atan2(Math.sin(da),Math.cos(da));
+    cam.az += da*k; cam.el += (camAlvo.el-cam.el)*k; cam.d += (camAlvo.d-cam.d)*k; cam.t.lerp(camAlvo.t,k);
+    if(Math.abs(da)<.002 && Math.abs(camAlvo.d-cam.d)<.5) camAlvo = null; }
+  if(auto && !reduzido) cam.az += dt*.35;
+  // animação de entrada das peças do passo: de explodido (1) até o alvo
+  if(entrada>0){ entrada = Math.max(0, entrada - dt/1.1); ex = alvoEx + (1-alvoEx)*easeIn(entrada); }
+  atualizaPecas();
+  const cx = Math.cos(cam.el);
+  camera.position.set(cam.t.x + cam.d*cx*Math.sin(cam.az), cam.t.y + cam.d*Math.sin(cam.el), cam.t.z + cam.d*cx*Math.cos(cam.az));
+  camera.lookAt(cam.t);
+  renderer.render(scene, camera);
+  requestAnimationFrame(quadro);
+}
+const easeIn = x=>x*x*(3-2*x);
+ir(0); requestAnimationFrame(quadro);
+window.__montagem = {ir:i=>ir(i), pecas};
+})();
+</script>
+</body>
+</html>
