@@ -65,4 +65,5 @@ Cada grupo entrega: (1) a tabela do papel antes e depois, (2) o gráfico de bati
 - **Aula 3 · Quem ensina é a recompensa** (`atividades/ficha-01-recompensa.md`): laboratório de recompensas no simulador ou no painel Wi-Fi.
 - **Aula 4 · Os botões do aprendizado** (`atividades/ficha-02-parametros.md`): α, γ e exploração, com média de rodadas.
 - **Aula 5 · Pensando como o robô** (`atividades/ficha-03-pensando-como-robo.md`): modo *Adivinhe a ação* e a conta do Q-learning à mão.
+- **Temporada completa (8º ano):** `temporada-1/` transforma este roteiro e as fichas em 6 aulas-episódio com tabelas, gráficos e médias.
 - **Plano B turbinado:** treine o cérebro no simulador, baixe o JSON e carregue no robô pelo painel Wi-Fi.
