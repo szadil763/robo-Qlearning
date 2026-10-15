@@ -39,3 +39,7 @@ Código, comentários, documentação e mensagens em **português do Brasil**.
 
 ## Projeto irmão
 Robô 2 (identificador de gestos/cartões, aprendizado supervisionado) será um repositório separado. Manter o mesmo padrão de pastas.
+
+## Site (GitHub Pages)
+- `.github/workflows/pages.yml` publica a cada push na `main`: `site/index.html` (entrada), `docs/ilustracao-3d.html` → `simulador.html` e `docs/montagem-3d.html` → `montagem.html`. Não há cópias versionadas desses arquivos: editar sempre os originais em `docs/`.
+- As páginas carregam o three.js r128 do cdnjs; se trocar a versão, trocar nas duas.
