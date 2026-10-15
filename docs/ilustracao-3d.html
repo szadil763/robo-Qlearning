@@ -1047,7 +1047,7 @@ function saveText(name,text,mime){
   brainTxt.value=text;
   try{var b=new Blob([text],{type:mime}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
     document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
-    dataNote.textContent='Arquivo “'+name+'” gerado. Se o download não começou, copie o texto do campo acima.';}
+    dataNote.textContent='Texto gerado no campo acima. Se o download não começar (alguns visualizadores bloqueiam), copie o texto e salve como “'+name+'”. Abrindo o arquivo HTML no computador, o download funciona.';}
   catch(e){dataNote.textContent='Não foi possível baixar aqui. Copie o texto do campo acima e salve num arquivo “'+name+'”.';}}
 function brainOnlyObs(){if(world==='maze'){dataNote.textContent='O cérebro em JSON vale só para o cenário Obstáculos (o do robô real). O histórico CSV funciona nos dois.';return false;}return true;}
 $('#bBrainSave').onclick=function(){if(!brainOnlyObs())return;saveText('cerebro-robo.json',JSON.stringify(sim.exportBrain()),'application/json');};
