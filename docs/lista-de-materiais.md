@@ -20,11 +20,11 @@ Valores em reais são **estimativas aproximadas** para orçamento. Confira os pr
 | – | Jumpers, 2 abraçadeiras de nylon (~2,5 mm), fita dupla-face ou velcro | Fixação dos motores, das pilhas e da placa | 10 |
 | 2 + 4 | Parafusos M3×8 (2, suporte do sensor) e M3×6 (4, suporte do OLED) | Autorroscantes nos furos-guia de 2,7 mm do chassi | 5 |
 | 2 | Pneus de TPU impressos (opcional) | Ou um O-ring/elástico grosso de ~36 mm interno | – |
-| ~150 g | Filamento PLA | Chassi, rodas e suportes (arquivos em `cad/stl/`) | – |
+| ~150 g | Filamento PLA | Chassi, rodas e suportes (arquivos em `cad/stl/`); rolo de 1 kg por ~R$ 100 a 160 | 15 a 25 |
 
 **Arena:** chapa de MDF (~1,2 × 0,8 m de piso e paredes de ~15 cm) ou papelão duro. Pode ser cortada no laser.
 
-**Total aproximado do robô:** de R$ 190 a R$ 350, dependendo de onde comprar e do que você já tem na bancada.
+**Total aproximado do robô:** de R$ 230 a R$ 410, já contando filamento e parafusos (soma das linhas acima, com os 2 motores), dependendo de onde comprar e do que você já tem na bancada. Sem a arena.
 
 ## Se for fazer em turma (alunos montando)
 
