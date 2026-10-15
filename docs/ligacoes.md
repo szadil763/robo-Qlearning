@@ -1,5 +1,7 @@
 # Ligações elétricas
 
+Para ver cada fio em 3D, abra a montagem (`montagem-3d.html`, passos 9 a 13).
+
 ## Pinagem (ESP32 DevKit)
 
 | Função | Pino ESP32 | Vai para |

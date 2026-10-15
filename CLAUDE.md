@@ -35,6 +35,7 @@ Código, comentários, documentação e mensagens em **português do Brasil**.
 
 - STL e montagem 3D: **nunca editar os STL à mão**. Mudou medida/furo/pino no `gerar_stl.py`? Rode `python3 cad/gerar_stl.py` e depois `python3 cad/montar_pagina.py` (recria `docs/montagem-3d.html` a partir de `docs/montagem-3d.template.html`) e versione os STL. Se mudar pinos de parafuso ou componentes, atualizar também os passos e a lista de materiais.
 - As peças compradas na ilustração de montagem (motor, pilhas, placa, OLED, LEDs) são formas simples com medidas típicas; **não foram conferidas com os componentes reais**. A peça `08_teste_ajuste.stl` deve ser impressa antes do resto. Nenhum STL foi impresso ainda.
+- Fiação na montagem 3D: os passos 9 a 13 de `docs/montagem-3d.template.html` desenham cada fio (lista `FIOS`, pontas em `PINO`) com a mesma pinagem de `docs/ligacoes.md`. Se mudar um pino, atualizar os dois e rodar `python3 cad/montar_pagina.py`.
 - Espaço entre os suportes do OLED e do sensor: 72 mm para o suporte de 2 pilhas 18650.
 
 ## Projeto irmão

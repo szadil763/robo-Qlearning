@@ -38,6 +38,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 canvas:active{cursor:grabbing}
 .hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--muted);pointer-events:none;background:color-mix(in srgb,var(--surface) 80%,transparent);padding:3px 8px;border-radius:8px}
 .tag{position:absolute;left:12px;top:10px;font-family:var(--mono);font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--surface) 80%,transparent);padding:3px 8px;border-radius:8px}
+.rot{position:absolute;transform:translate(-50%,calc(-100% - 10px));pointer-events:none;white-space:nowrap;font:600 12px var(--body);color:var(--fg);
+  background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:3px 8px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.rot::after{content:"";position:absolute;left:50%;bottom:-6px;width:8px;height:8px;margin-left:-4px;background:var(--surface);border-right:1px solid var(--accent);border-bottom:1px solid var(--accent);transform:rotate(45deg)}
+.rot[hidden]{display:none}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;align-self:start}
 h1{font-family:var(--display);font-size:20px;margin:0}
 h2{font-family:var(--display);font-size:18px;margin:0}
@@ -76,6 +80,7 @@ details summary{cursor:pointer;font-weight:600;font-size:13px}
     <canvas id="cv" aria-label="Robô em 3D. Arraste para girar, role para aproximar."></canvas>
     <div class="tag" id="tag">passo 0</div>
     <div class="hint">arraste para girar · role ou pince para aproximar</div>
+    <div class="rot" id="rotA" hidden></div><div class="rot" id="rotB" hidden></div>
   </div>
   <aside class="panel">
     <div>
@@ -260,17 +265,46 @@ function pilhas(){
   g.add(B(2,39,12,xa+1,0,zT+9,COR.cinza)); g.add(B(2,39,12,xb-1,0,zT+9,COR.cinza));
   return g;
 }
+// Placa perfurada (70×56 mm) sobre as pilhas. As posições abaixo servem também de pontas para os fios (PINO).
+const zp = base + 3 + 18.4 + 1 + 1.6;                          // face de cima da placa perfurada
+const xE = 10, yE = 11, zE = zp + 10.1;                        // ESP32 DevKit 30 pinos: centro e topo da placa
+const ESQ = ['EN','VP','VN','D34','D35','D32','D33','D25','D26','D27','D14','D12','GND','D13','VIN'];   // fileira do lado -Y
+const DIR = ['D23','D22','TX0','RX0','D21','D19','D18','D5','TX2','RX2','D4','D2','D15','GND','3V3'];   // fileira do lado +Y
+const xTB = -18, yTB = -15, zTB = zp + 4.8;                    // driver TB6612
+const TB_DENTRO = ['PWMA','AIN2','AIN1','STBY','BIN1','BIN2','PWMB','GND'], TB_FORA = ['VM','VCC','GND','AO1','AO2','BO2','BO1','GND'];
+const PINO = {};
+ESQ.forEach((n,i)=>{ PINO['esp_'+n+(n==='GND'?'_e':'')] = [xE-16.5+i*2.54, yE-11.43, zE+.3]; });
+DIR.forEach((n,i)=>{ PINO['esp_'+n+(n==='GND'?'_d':'')] = [xE-16.5+i*2.54, yE+11.43, zE+.3]; });
+TB_DENTRO.forEach((n,i)=>{ PINO['tb_'+n+(n==='GND'?'_d':'')] = [xTB+(i-3.5)*2.54, yTB+8.9, zTB+.3]; });
+TB_FORA.forEach((n,i)=>{ PINO['tb_'+n+(n==='GND'?(i===2?'_f':'_f2'):'')] = [xTB+(i-3.5)*2.54, yTB-8.9, zTB+.3]; });
+Object.assign(PINO, {
+  sd_in_p:[-3.5,-13,zp+3.6], sd_in_n:[-3.5,-21,zp+3.6], sd_out_p:[15.5,-13,zp+3.6], sd_out_n:[15.5,-21,zp+3.6],
+  ch_1:[29.5,-23,zp+1.2], ch_2:[38.5,-23,zp+1.2],
+  bm_a:[21,-11,zp+1.2], bm_b:[27,-11,zp+1.2], br_a:[21,-18,zp+1.2], br_b:[27,-18,zp+1.2],
+  bat_p:[42,10.2,base+3+9.2], bat_n:[42,-10.2,base+3+9.2],
+  r1_a:[39,7,zp+1.6], div_j:[39,-1,zp+1.6], r2_b:[39,-9,zp+1.6]
+});
+const xGND = x => [x, 26.5, zp+1.3];                           // ponto na trilha de GND (barra preta na borda +Y)
+function pinos(lista, cor){ const g = new THREE.Group(); lista.forEach(p=>g.add(B(1.1,1.1,.8,p[0],p[1],p[2]-.3,cor||COR.ouro,{metalness:.7,roughness:.3}))); return g; }
 function placaEletronica(){
-  const xc = 6, z0 = base + 3 + 18.4 + 1;     // topo das pilhas
-  const g = grupo(B(62,40,1.6,xc,0,z0+.8,COR.verde));
-  g.add(B(51,28,1.6,xc+2,0,z0+1.6+4,COR.azul));                       // ESP32
-  g.add(B(18,16,5,xc+2-14,0,z0+1.6+6.8,COR.metal,{metalness:.6}));    // blindagem do módulo
-  g.add(B(51,2.5,8.5,xc+2,13.6,z0+1.6+1.6+1,COR.preto)); g.add(B(51,2.5,8.5,xc+2,-13.6,z0+1.6+1.6+1,COR.preto)); // pinos
-  g.add(B(20,20,1.6,xc-23,-8,z0+1.6+5,COR.vermelho));                 // TB6612
-  g.add(B(22,10,6,xc-22,12,z0+1.6+3,0xC23B3B,{roughness:.4}));       // step-down
-  g.add(B(6,6,3.5,xc+26,-14,z0+1.6+1.8,COR.preto)); g.add(B(6,6,3.5,xc+26,14,z0+1.6+1.8,COR.preto));    // botões
-  g.add(C(1.6,2,'z',xc+26,-14,z0+1.6+4.2,COR.cinza)); g.add(C(1.6,2,'z',xc+26,14,z0+1.6+4.2,COR.cinza));
-  g.add(B(10,6,8,xc-30,-15,z0+1.6+4,COR.preto));                       // chave
+  const g = grupo(B(70,56,1.6,6,0,zp-.8,COR.verde));
+  g.add(B(64,1.6,1.2,6,26.5,zp+.6,COR.preto));                                          // trilha de GND
+  // ESP32 DevKit: soquetes, placa azul, módulo blindado (antena para trás) e USB (para a frente)
+  g.add(B(38,2.5,8.5,xE+1.3,yE-11.43,zp+4.25,COR.preto)); g.add(B(38,2.5,8.5,xE+1.3,yE+11.43,zp+4.25,COR.preto));
+  g.add(B(51,28,1.6,xE,yE,zE-.8,COR.azul));
+  g.add(B(18,16,3,xE-14,yE,zE+1.5,COR.metal,{metalness:.6}));
+  g.add(B(6,8,3,xE+23.5,yE,zE+1.5,COR.metal,{metalness:.7}));
+  g.add(pinos([...ESQ.map(n=>PINO['esp_'+n+(n==='GND'?'_e':'')]), ...DIR.map(n=>PINO['esp_'+n+(n==='GND'?'_d':'')])]));
+  // TB6612 (vermelho) sobre soquetes
+  g.add(B(20.3,20.3,1.6,xTB,yTB,zTB-.8,COR.vermelho)); g.add(B(4,6,1,xTB,yTB,zTB+.5,COR.preto));
+  g.add(B(18,2.5,3.2,xTB,yTB+8.9,zp+1.6,COR.preto)); g.add(B(18,2.5,3.2,xTB,yTB-8.9,zp+1.6,COR.preto));
+  g.add(pinos(Object.keys(PINO).filter(k=>k.startsWith('tb_')).map(k=>PINO[k])));
+  // step-down MP1584 (azul-escuro) com indutor e trimpot
+  g.add(B(22,17,1.6,6,-17,zp+2.5,0x1F4E8C)); g.add(B(6,6,3.5,7,-17,zp+5,COR.preto)); g.add(B(3,3,3,1,-14,zp+4.7,0x3B7DD8));
+  g.add(pinos([PINO.sd_in_p,PINO.sd_in_n,PINO.sd_out_p,PINO.sd_out_n]));
+  // chave liga/desliga e 2 botões
+  g.add(B(8,4,5,34,-23,zp+2.5,COR.preto)); g.add(B(1.5,1.5,3,35,-23,zp+6,COR.metal,{metalness:.6}));
+  for(const y of [-11,-18]){ g.add(B(6,6,3.5,24,y,zp+1.75,COR.preto)); g.add(C(1.6,2,'z',24,y,zp+4.2,COR.cinza)); }
   return g;
 }
 function localSlope(){ const s = new THREE.Group(); s.position.set(x0,0,zBase); s.rotation.y = -TH; return s; }
@@ -285,16 +319,88 @@ function led(sy,cor){
   const g = grupo(C(2.5,8,'z',sc,sy*22.5,1.0,cor,{roughness:.2,transparent:true,opacity:.92},20), C(3.1,1,'z',sc,sy*22.5,-2.2,cor,{roughness:.2},20));
   s.add(g); return grupo(s);
 }
-function fios(){
-  const g = new THREE.Group(); const zb = base+3+18.4+2.6;
-  function tubo(pts,cor){ const c = new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2]))); g.add(new THREE.Mesh(new THREE.TubeGeometry(c,24,.7,6), mat(cor,{roughness:.5}))); }
-  for(const s of [-1,1]) tubo([[-28,s*6,zb],[-30,s*14,12],[xM,s*(P.BASE_L/2-24),zM+1]], s>0?0xC23B3B:0x222222);
-  tubo([[28,0,zb],[40,-4,24],[xp-2,-4,zSens-9]], 0xE0B000);
-  tubo([[30,5,zb],[42,10,22],[xp-2,3,zSens-9]], 0x2fd37a);
-  tubo([[-8,-14,zb],[-30,-22,26],[x0+10,-20,zBase+6]], 0x3B7DD8);
-  tubo([[-6,-14,zb],[-30,-24,28],[x0+10,-18,zBase+6]], 0xffffff);
+// ---------- fiação (pinagem igual a docs/ligacoes.md) ----------
+function rampa(lx,ly,lz){ return [x0 + lx*Math.cos(TH) - lz*Math.sin(TH), ly, zBase + lx*Math.sin(TH) + lz*Math.cos(TH)]; }   // ponto local da rampa do OLED → robô
+Object.assign(PINO, {
+  oled_GND:rampa(3.1,3.81,-3), oled_VCC:rampa(3.1,1.27,-3), oled_SCL:rampa(3.1,-1.27,-3), oled_SDA:rampa(3.1,-3.81,-3),
+  ledv_a:rampa(18.5+1.27,22.5,-5), ledv_k:rampa(18.5-1.27,22.5,-5), ledr_a:rampa(18.5+1.27,-22.5,-5), ledr_k:rampa(18.5-1.27,-22.5,-5),
+  hc_VCC:[xp-.6,-3.81,zSens-12], hc_TRIG:[xp-.6,-1.27,zSens-12], hc_ECHO:[xp-.6,1.27,zSens-12], hc_GND:[xp-.6,3.81,zSens-12]
+});
+for(const s of [1,-1]){ PINO['m'+s+'_1'] = [xM-3,s*20.5,zM+5.2]; PINO['m'+s+'_2'] = [xM+3,s*20.5,zM+5.2]; }
+const V3 = p => new THREE.Vector3(p[0],p[1],p[2]);
+function curvaFio(a, b, via, sobe){
+  const pts = [a, [a[0],a[1],a[2]+3]];
+  if(via) pts.push(...via);
+  else { const zm = Math.max(a[2],b[2]) + (sobe||6); pts.push([a[0]+(b[0]-a[0])*.3, a[1]+(b[1]-a[1])*.3, zm], [a[0]+(b[0]-a[0])*.7, a[1]+(b[1]-a[1])*.7, zm]); }
+  pts.push([b[0],b[1],b[2]+3], b);
+  return new THREE.CatmullRomCurve3(pts.map(V3), false, 'centripetal');
+}
+function resistor(a, b, faixas){        // corpo bege com faixas de cor, de a até b
+  const va = V3(a), vb = V3(b), d = vb.clone().sub(va), L = d.length(), g = new THREE.Group();
+  const corpo = new THREE.Mesh(new THREE.CylinderGeometry(1.25,1.25,L*.62,16), mat(0xD9C29A,{roughness:.6}));
+  g.add(corpo);
+  faixas.forEach((c,i)=>{ const f = new THREE.Mesh(new THREE.CylinderGeometry(1.32,1.32,.6,16), mat(c)); f.position.y = -L*.22 + i*L*.11; g.add(f); });
+  const fio = new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,L,8), mat(COR.metal,{metalness:.7})); g.add(fio);
+  g.position.copy(va.clone().add(vb).multiplyScalar(.5));
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize());
   return g;
 }
+const FAIXAS = {'220 Ω':[0xE53935,0xE53935,0x6D4C41], '1 kΩ':[0x6D4C41,0x111111,0xE53935], '2 kΩ':[0xE53935,0x111111,0xE53935]};
+function fio(def){
+  const c = curvaFio(PINO[def.de], PINO[def.para], def.via, def.sobe), g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 64, .75, 8), mat(def.cor,{roughness:.45})));
+  for(const k of [def.de, def.para]) g.add(new THREE.Mesh(new THREE.SphereGeometry(1.1,12,8), mat(def.cor,{roughness:.45})).translateX(PINO[k][0]).translateY(PINO[k][1]).translateZ(PINO[k][2]));
+  if(def.res) g.add(resistor(c.getPoint(.42).toArray(), c.getPoint(.58).toArray(), FAIXAS[def.res]));
+  return g;
+}
+// Cores dos fios: vermelho = bateria (7,4 V), rosa = 5 V, laranja = 3,3 V, preto = GND; os sinais têm cores próprias.
+const VERM = 0xD32F2F, ROSA = 0xEC407A, LAR = 0xFB8C00, PRETO = 0x262626;
+const FIOS = [
+  // passo 9: alimentação
+  {p:9, de:'bat_p', para:'ch_1', cor:VERM, n:'Bateria + → chave', a:'Bateria +', b:'Chave (entrada)'},
+  {p:9, de:'ch_2', para:'sd_in_p', cor:VERM, n:'Chave → step-down IN+', a:'Chave (saída)', b:'Step-down IN+'},
+  {p:9, de:'ch_2', para:'tb_VM', cor:VERM, n:'Chave → TB6612 VM (força dos motores)', a:'Chave (saída)', b:'TB6612 VM', sobe:12},
+  {p:9, de:'bat_n', para:'sd_in_n', cor:PRETO, n:'Bateria − → step-down IN−', a:'Bateria −', b:'Step-down IN−'},
+  {p:9, de:'sd_in_n', para:'tb_GND_f', cor:PRETO, n:'Step-down IN− → TB6612 GND', a:'Step-down IN−', b:'TB6612 GND'},
+  {p:9, de:'sd_out_n', para:'esp_GND_e', cor:PRETO, n:'Step-down OUT− → ESP32 GND', a:'Step-down OUT−', b:'ESP32 GND'},
+  {p:9, de:'esp_GND_d', para:'gnd_esp', cor:PRETO, n:'ESP32 GND → trilha de GND', a:'ESP32 GND', b:'Trilha de GND'},
+  {p:9, de:'sd_out_p', para:'esp_VIN', cor:ROSA, n:'Step-down OUT+ (5 V) → ESP32 VIN', a:'Step-down OUT+ (5 V)', b:'ESP32 VIN'},
+  {p:9, de:'esp_3V3', para:'tb_VCC', cor:LAR, n:'ESP32 3V3 → TB6612 VCC (lógica)', a:'ESP32 3V3', b:'TB6612 VCC', sobe:14},
+  // passo 10: motores
+  {p:10, de:'esp_D26', para:'tb_AIN1', cor:0xF2C200, n:'GPIO 26 → AIN1', a:'ESP32 GPIO 26', b:'TB6612 AIN1'},
+  {p:10, de:'esp_D25', para:'tb_AIN2', cor:0x7CB342, n:'GPIO 25 → AIN2', a:'ESP32 GPIO 25', b:'TB6612 AIN2'},
+  {p:10, de:'esp_D27', para:'tb_PWMA', cor:0x29B6F6, n:'GPIO 27 → PWMA (velocidade esq.)', a:'ESP32 GPIO 27', b:'TB6612 PWMA'},
+  {p:10, de:'esp_D33', para:'tb_BIN1', cor:0xAB47BC, n:'GPIO 33 → BIN1', a:'ESP32 GPIO 33', b:'TB6612 BIN1'},
+  {p:10, de:'esp_D32', para:'tb_BIN2', cor:0x26A69A, n:'GPIO 32 → BIN2', a:'ESP32 GPIO 32', b:'TB6612 BIN2'},
+  {p:10, de:'esp_D14', para:'tb_PWMB', cor:0x5C6BC0, n:'GPIO 14 → PWMB (velocidade dir.)', a:'ESP32 GPIO 14', b:'TB6612 PWMB'},
+  {p:10, de:'esp_D13', para:'tb_STBY', cor:0xBDBDBD, n:'GPIO 13 → STBY (liga o driver)', a:'ESP32 GPIO 13', b:'TB6612 STBY', sobe:9},
+  {p:10, de:'tb_AO1', para:'m1_1', cor:0xC62828, n:'AO1 → motor esquerdo', a:'TB6612 AO1', b:'Motor esquerdo', via:[[-24,-28,zp+6],[-33,-10,zp+4],[-33,22,20]]},
+  {p:10, de:'tb_AO2', para:'m1_2', cor:0x424242, n:'AO2 → motor esquerdo', a:'TB6612 AO2', b:'Motor esquerdo', via:[[-22,-29,zp+6],[-31.5,-10,zp+2],[-31.5,23,18]]},
+  {p:10, de:'tb_BO1', para:'m-1_2', cor:0xC62828, n:'BO1 → motor direito', a:'TB6612 BO1', b:'Motor direito', via:[[-12,-27,zp+3],[-11,-25,20]]},
+  {p:10, de:'tb_BO2', para:'m-1_1', cor:0x424242, n:'BO2 → motor direito', a:'TB6612 BO2', b:'Motor direito', via:[[-16,-27,zp+3],[-17,-25,20]]},
+  // passo 11: sensor ultrassônico e divisor de tensão
+  {p:11, de:'sd_out_p', para:'hc_VCC', cor:ROSA, n:'5 V (step-down OUT+) → HC-SR04 VCC', a:'Step-down OUT+ (5 V)', b:'HC-SR04 VCC', via:[[30,-15,zp+8],[47,-6,16]]},
+  {p:11, de:'esp_D5', para:'hc_TRIG', cor:0x00ACC1, n:'GPIO 5 → TRIG', a:'ESP32 GPIO 5', b:'HC-SR04 TRIG', via:[[30,24,zE+6],[46,6,22],[48,-1,10]]},
+  {p:11, de:'hc_ECHO', para:'r1_a', cor:0x43A047, n:'ECHO → resistor 1 kΩ', a:'HC-SR04 ECHO (5 V)', b:'Resistor 1 kΩ'},
+  {p:11, de:'div_j', para:'esp_D18', cor:0x9CCC65, n:'Divisor → GPIO 18 (≈3,3 V)', a:'Meio do divisor (≈3,3 V)', b:'ESP32 GPIO 18', sobe:10},
+  {p:11, de:'r2_b', para:'gnd_div', cor:PRETO, n:'Resistor 2 kΩ → GND', a:'Resistor 2 kΩ', b:'Trilha de GND', via:[[41,-9,zp+4],[42,20,zp+4]]},
+  {p:11, de:'hc_GND', para:'gnd_hc', cor:PRETO, n:'HC-SR04 GND → GND', a:'HC-SR04 GND', b:'Trilha de GND', via:[[47,10,14],[41,24,zp+4]]},
+  // passo 12: display e LEDs
+  {p:12, de:'esp_3V3', para:'oled_VCC', cor:LAR, n:'ESP32 3V3 → OLED VCC', a:'ESP32 3V3', b:'OLED VCC', via:[rampa(3.1,1.27,-9), rampa(22,3,-15), [-22,8,zE+3], [20,24,zE+5]]},
+  {p:12, de:'gnd_oled', para:'oled_GND', cor:PRETO, n:'OLED GND → GND', a:'Trilha de GND', b:'OLED GND', via:[[-24,26,zp+6], [-26,10,zE+1], rampa(22,5,-15), rampa(3.1,3.81,-9)]},
+  {p:12, de:'esp_D21', para:'oled_SDA', cor:0x1E88E5, n:'GPIO 21 → SDA', a:'ESP32 GPIO 21', b:'OLED SDA', via:[[0,25,zE+4], [-22,2,zE+2], rampa(22,-2,-15), rampa(3.1,-3.81,-9)]},
+  {p:12, de:'esp_D22', para:'oled_SCL', cor:0xFDD835, n:'GPIO 22 → SCL', a:'ESP32 GPIO 22', b:'OLED SCL', via:[[-4,25,zE+6], [-22,4,zE+4], rampa(22,0,-15), rampa(3.1,-1.27,-9)]},
+  {p:12, de:'esp_D19', para:'ledv_a', cor:0x2E7D32, n:'GPIO 19 → 220 Ω → LED verde', a:'ESP32 GPIO 19', b:'LED verde (perna longa)', res:'220 Ω', via:[[4,27,zE+5], [-24,24,zE+2], rampa(24,22,-12), rampa(19.8,22.5,-9)]},
+  {p:12, de:'esp_D23', para:'ledr_a', cor:0xE57373, n:'GPIO 23 → 220 Ω → LED vermelho', a:'ESP32 GPIO 23', b:'LED vermelho (perna longa)', res:'220 Ω', via:[[-8,8,zE+8], [-26,-18,zE+2], rampa(24,-22,-12), rampa(19.8,-22.5,-9)]},
+  {p:12, de:'ledv_k', para:'gnd_ledv', cor:PRETO, n:'LED verde (perna curta) → GND', a:'LED verde (perna curta)', b:'Trilha de GND', via:[rampa(17.2,22.5,-9), rampa(24,24,-14), [-27,26,zp+5]]},
+  {p:12, de:'ledr_k', para:'tb_GND_d', cor:PRETO, n:'LED vermelho (perna curta) → GND', a:'LED vermelho (perna curta)', b:'TB6612 GND', via:[rampa(17.2,-22.5,-9), rampa(24,-22,-14), [-26,-14,zp+8]]},
+  // passo 13: botões
+  {p:13, de:'esp_D4', para:'bm_a', cor:0xFF7043, n:'GPIO 4 → botão de modo', a:'ESP32 GPIO 4', b:'Botão de modo', via:[[19,26,zE+5],[37,8,zE+2],[22,-8,zp+6]]},
+  {p:13, de:'bm_b', para:'gnd_bm', cor:PRETO, n:'Botão de modo → GND', a:'Botão de modo', b:'Trilha de GND', via:[[30,-6,zp+4],[37,10,zE+1],[34,24,zp+5]]},
+  {p:13, de:'esp_RX2', para:'br_a', cor:0x8D6E63, n:'GPIO 16 → botão de reset', a:'ESP32 GPIO 16', b:'Botão de reset', via:[[16,26,zE+7],[39,6,zE+3],[22,-15,zp+7]]},
+  {p:13, de:'br_b', para:'gnd_br', cor:PRETO, n:'Botão de reset → GND', a:'Botão de reset', b:'Trilha de GND', via:[[31,-16,zp+4],[40,8,zE+2],[36,24,zp+5]]}
+];
+Object.assign(PINO, {gnd_esp:xGND(27), gnd_div:xGND(37), gnd_hc:xGND(33), gnd_oled:xGND(-22), gnd_ledv:xGND(-25), gnd_bm:xGND(30), gnd_br:xGND(35)});
 
 // ---------- definição das peças ----------
 const n = [-Math.sin(TH), 0, Math.cos(TH)];                  // normal da rampa do OLED
@@ -321,7 +427,10 @@ add('parafoled','Parafuso M3×6',8,[0,0,70], grupo(...ps), false, 4);
 add('oled','Display OLED 0,96" (4 pinos)',8,n.map(v=>v*30), oledModulo(), false, 1);
 add('led_v','LED verde 5 mm',8,n.map(v=>v*22), led(1,COR.led_v), false, 1);
 add('led_r','LED vermelho 5 mm',8,n.map(v=>v*22), led(-1,COR.led_r), false, 1);
-add('fios','Fios jumper e resistores (ver ligacoes.md)',9,[0,0,0], fios(), false, 0);
+FIOS.forEach((f,i)=>{ const p = add('fio'+i, f.n, f.p, [0,0,0], fio(f), false, 1); const pc = pecas[pecas.length-1]; Object.assign(pc, {fio:f, cor:'#'+f.cor.toString(16).padStart(6,'0')}); });
+add('r1','Resistor 1 kΩ (marrom, preto, vermelho)',11,[0,0,30], resistor(PINO.r1_a, PINO.div_j, FAIXAS['1 kΩ']), false, 1);
+add('r2','Resistor 2 kΩ (vermelho, preto, vermelho)',11,[0,0,30], resistor(PINO.div_j, PINO.r2_b, FAIXAS['2 kΩ']), false, 1);
+for(const id of ['r1','r2']) Object.assign(pecas.find(p=>p.id===id), {cor:'#D9C29A'});
 
 // ---------- passos ----------
 const PASSOS = [
@@ -343,8 +452,16 @@ const PASSOS = [
   h:'<p>Prenda a placa perfurada (ou protoboard pequena) em cima das pilhas. Nela ficam o <b>ESP32</b>, o <b>driver TB6612</b>, o <b>step-down</b> ajustado em 5 V (regule com o multímetro antes de ligar o ESP32), a chave e os <b>2 botões</b>. Mantenha a antena do ESP32 livre.</p>'},
  {t:'8. Display, LEDs e suporte do OLED', cam:[-150,30,250,[-38,0,20]],
   h:'<p>Aparafuse o suporte com <b>4 parafusos M3×6</b>. Encaixe o display OLED nos 4 pinos da rampa (os pinos do display passam pela fenda) e os <b>2 LEDs de 5 mm</b> nos furos. Em cada LED vai um resistor de 220 Ω. O ângulo de 55° deixa o aluno ler a tela de pé, por trás do robô.</p>'},
- {t:'9. Fiação', cam:[-35,48,260,[0,0,18]],
-  h:'<p>Ligue tudo conforme <code>docs/ligacoes.md</code>. <b>Atenção:</b> o ECHO do HC-SR04 é 5 V e o ESP32 é 3,3 V, então o divisor de tensão (1 kΩ + 2 kΩ) é obrigatório. Se um motor girar ao contrário, inverta seus dois fios.</p><p class="aviso">Primeiro teste com as rodas no ar e <b>sem as pilhas</b> (USB). Só depois coloque as pilhas e a chave.</p>'},
+ {t:'9. Fiação: alimentação', cam:[25,62,250,[4,0,30]],
+  h:'<p>Comece pela energia. A bateria passa pela <b>chave</b> e vai para o <b>step-down</b> (que baixa para 5 V e alimenta o ESP32 pelo pino VIN) e para o <b>VM</b> do driver, que é a força dos motores. O driver recebe a lógica de 3,3 V do ESP32.</p><p>Todos os <b>GND</b> (fios pretos) se ligam entre si; a barra preta na borda da placa é a <b>trilha de GND</b>. Cores: <b style="color:#D32F2F">vermelho</b> = bateria, <b style="color:#EC407A">rosa</b> = 5 V, <b style="color:#FB8C00">laranja</b> = 3,3 V.</p><p class="aviso">Antes de ligar o ESP32, regule o step-down para <b>5 V</b> com o multímetro.</p>'},
+ {t:'10. Fiação: motores', cam:[-50,58,250,[-12,0,26]],
+  h:'<p>Sete fios saem do ESP32 para o <b>TB6612</b>: dois de direção e um de velocidade (PWM) para cada motor, e o <b>STBY</b>, que liga o driver. As saídas <b>AO1/AO2</b> vão para o motor esquerdo e <b>BO1/BO2</b> para o direito.</p><p>Se um motor girar ao contrário, <b>inverta os dois fios dele</b> no driver.</p>'},
+ {t:'11. Fiação: sensor ultrassônico', cam:[75,40,220,[36,0,20]],
+  h:'<p>O HC-SR04 é alimentado com <b>5 V</b>. O TRIG vai direto ao GPIO 5. O <b>ECHO responde com 5 V</b>, mas o ESP32 aguenta só 3,3 V: por isso ele passa pelo <b>divisor de tensão</b> (1 kΩ e 2 kΩ em série até o GND). O ponto do meio, com cerca de 3,3 V, vai ao GPIO 18.</p><p class="aviso">Sem o divisor, o ECHO pode queimar o pino do ESP32.</p>'},
+ {t:'12. Fiação: display e LEDs', cam:[-125,42,230,[-30,0,28]],
+  h:'<p>O OLED usa só 4 fios: <b>VCC</b> (3,3 V), <b>GND</b>, <b>SDA</b> (GPIO 21) e <b>SCL</b> (GPIO 22). Cada LED tem um <b>resistor de 220 Ω</b> no caminho: a <b>perna longa</b> recebe o sinal do ESP32 (GPIO 19 para o verde, 23 para o vermelho) e a <b>perna curta</b> vai ao GND.</p>'},
+ {t:'13. Fiação: botões', cam:[55,55,200,[28,0,30]],
+  h:'<p>Cada botão liga um GPIO ao GND: o de <b>modo</b> no GPIO 4 e o de <b>reset do aprendizado</b> no GPIO 16. Não precisa de resistor, porque o ESP32 usa o <i>pull-up</i> interno.</p><p class="aviso">Primeiro teste com as rodas no ar e <b>sem as pilhas</b> (pela USB). Só depois coloque as pilhas e ligue a chave. Mais detalhes em <code>docs/ligacoes.md</code>.</p>'},
  {t:'Robô pronto', cam:[-35,22,320,[0,0,8]], todas:true, giro:true,
   h:'<p>Pronto! Coloque o robô na arena e ligue a chave. O display mostra o que ele <b>percebe</b>, <b>escolhe</b>, <b>faz</b> e <b>aprende</b> a cada passo. Arraste o controle <b>Explodir</b> para rever como tudo se encaixa.</p>'}
 ];
@@ -354,10 +471,10 @@ const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const elSteps = document.getElementById('steps'), elT = document.getElementById('titulo'), elTx = document.getElementById('texto'), elL = document.getElementById('lista');
 const elEx = document.getElementById('ex'), elExv = document.getElementById('exv'), elTag = document.getElementById('tag');
 const bAnt = document.getElementById('ant'), bProx = document.getElementById('prox');
-let passo = 0, ex = 1, alvoEx = 1, destaque = null, entrada = 0;
+let passo = 0, ex = 1, alvoEx = 1, destaque = null, fixo = null, entrada = 0;
 PASSOS.forEach((p,i)=>{ const b = document.createElement('button'); b.textContent = i===0?'•':(i===PASSOS.length-1?'✓':i); b.title = p.t; b.setAttribute('aria-label', p.t); b.onclick = ()=>ir(i); elSteps.appendChild(b); });
 
-function corDe(p){ return p.imp ? '#E8742A' : '#2B3A55'; }
+function corDe(p){ return p.cor || (p.imp ? '#E8742A' : '#2B3A55'); }
 function ir(i){
   passo = Math.max(0, Math.min(PASSOS.length-1, i));
   const ps = PASSOS[passo];
@@ -365,17 +482,22 @@ function ir(i){
   [...elSteps.children].forEach((b,k)=>{ b.classList.toggle('on', k===passo); b.classList.toggle('done', k<passo); b.setAttribute('aria-current', k===passo?'step':'false'); });
   bAnt.disabled = passo===0; bProx.disabled = passo===PASSOS.length-1;
   elL.innerHTML = '';
-  const agrup = pecas.filter(p => ps.todas ? (p.qtd>0 && (passo!==0 || p.imp)) : p.passo===passo && p.qtd>0);
+  const agrup = pecas.filter(p => ps.todas ? (p.qtd>0 && !p.fio && (passo!==0 || p.imp)) : p.passo===passo && p.qtd>0);
+  fixo = null; destaque = null;
   agrup.forEach(p=>{ const li = document.createElement('li'); li.tabIndex = 0; li.dataset.id = p.id;
-    li.innerHTML = '<i class="sw" style="background:'+corDe(p)+'"></i><span class="q">'+p.qtd+'×</span><span>'+p.nome+'</span>';
-    li.onmouseenter = li.onfocus = ()=>realcar(p.id); li.onmouseleave = li.onblur = ()=>realcar(null); elL.appendChild(li); });
+    li.innerHTML = p.fio ? '<i class="sw" style="background:'+corDe(p)+';width:18px;height:6px;border-radius:3px"></i><span>'+p.nome+'</span>'
+                         : '<i class="sw" style="background:'+corDe(p)+'"></i><span class="q">'+p.qtd+'×</span><span>'+p.nome+'</span>';
+    li.onmouseenter = li.onfocus = ()=>realcar(p.id); li.onmouseleave = li.onblur = ()=>realcar(fixo);
+    li.onclick = ()=>{ fixo = fixo===p.id ? null : p.id; [...elL.children].forEach(x=>x.classList.toggle('hl', x.dataset.id===fixo)); realcar(fixo); };
+    elL.appendChild(li); });
+  if(agrup.some(p=>p.fio)){ const d = document.createElement('p'); d.className = 'sub'; d.textContent = 'Passe o mouse ou toque em um fio para destacá-lo e ver as duas pontas.'; elL.prepend(d); }
   alvoEx = passo===0 ? 1 : 0; ex = 1; entrada = (passo===0 || reduzido) ? 0 : 1; if(reduzido) ex = alvoEx;
   elEx.value = Math.round(alvoEx*100); elExv.textContent = elEx.value+'%';
   elEx.disabled = false;
   camAlvo = {az:ps.cam[0]*Math.PI/180, el:ps.cam[1]*Math.PI/180, d:ps.cam[2], t:new THREE.Vector3(ps.cam[3][0], ps.cam[3][2], -ps.cam[3][1])};
   auto = !!ps.giro;
 }
-function realcar(id){ destaque = id; }
+function realcar(id){ destaque = id; fioDest = !!(id && pecas.find(p=>p.id===id && p.fio)); }
 bAnt.onclick = ()=>ir(passo-1); bProx.onclick = ()=>ir(passo+1);
 elEx.oninput = ()=>{ alvoEx = elEx.value/100; ex = alvoEx; entrada = 0; elExv.textContent = elEx.value+'%'; };
 addEventListener('keydown', e=>{ if(e.key==='ArrowRight') ir(passo+1); if(e.key==='ArrowLeft') ir(passo-1); });
@@ -413,13 +535,26 @@ function atualizaPecas(){
     else if(p.passo<passo){ vis = true; e = 0; }
     else if(p.passo===passo){ vis = true; e = ex; }
     else vis = false;
+    if(p.fio && ps.todas && ex>.02) vis = false;               // fios não acompanham a explosão das peças
     p.g.visible = vis;
     p.g.position.set(p.vec[0]*e, p.vec[1]*e, p.vec[2]*e);
-    const atual = p.passo===passo || ps.todas;
-    const dest = destaque && (p.id===destaque || (destaque==='pneu_d' && p.id==='pneu_e') || (destaque==='abr' && false));
-    p.g.traverse(o=>{ if(o.isMesh){ const m = o.material; if(!o.userData.cl){ o.userData.cl = true; o.material = m.clone(); } o.material.emissive = o.material.emissive || new THREE.Color(0); o.material.emissive.setHex(dest?0x553311:0x000000); } });
+    const dest = destaque && (p.id===destaque || (destaque==='pneu_d' && p.id==='pneu_e'));
+    const apagado = p.fio && fioDest && !dest;                 // com um fio destacado, os outros ficam transparentes
+    p.g.traverse(o=>{ if(o.isMesh){ const m = o.material; if(!o.userData.cl){ o.userData.cl = true; o.material = m.clone(); }
+      o.material.emissive = o.material.emissive || new THREE.Color(0); o.material.emissive.setHex(dest?(p.fio?0x333333:0x553311):0x000000);
+      o.material.transparent = apagado; o.material.opacity = apagado ? .12 : 1; o.material.depthWrite = !apagado; } });
   }
+  // rótulos das duas pontas do fio destacado
+  const f = fioDest && pecas.find(p=>p.id===destaque);
+  [[rotA,'de','a'],[rotB,'para','b']].forEach(([el,k,t])=>{
+    if(!f || !f.g.visible){ el.hidden = true; return; }
+    const v = robo.localToWorld(V3(PINO[f.fio[k]])).project(camera);
+    el.hidden = false; el.textContent = f.fio[t];
+    el.style.left = ((v.x+1)/2*stage.clientWidth)+'px'; el.style.top = ((1-v.y)/2*stage.clientHeight)+'px';
+  });
 }
+const rotA = document.getElementById('rotA'), rotB = document.getElementById('rotB');
+let fioDest = false;
 function quadro(t){
   const dt = Math.min(.05,(t-tAnt)/1000); tAnt = t;
   if(camAlvo){ const k = reduzido?1:1-Math.pow(.001,dt);
