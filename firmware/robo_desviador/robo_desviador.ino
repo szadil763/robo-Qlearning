@@ -19,12 +19,18 @@
     BTN_MODO  (curto)  : alterna APRENDENDO <-> DEMONSTRAÇÃO (sem explorar, sem aprender)
     BTN_RESET (curto)  : liga/desliga o MODO PENSAR (o display mostra cada etapa do raciocínio)
     BTN_RESET (2 s)    : apaga tudo que o robô aprendeu (volta a ser "bebê")
+
+  PAINEL WI-FI (opcional, WIFI_LIGADO): o robô cria a rede "RoboQL". Conecte o celular ou o
+  computador e abra http://192.168.4.1 para ver a tabela Q e o raciocínio ao vivo, mudar as
+  recompensas, baixar o histórico (CSV) e salvar/carregar o cérebro (JSON). Código em painel.h.
 */
 
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
 // ======================= PINOS (ver docs/ligacoes.md) =======================
 const int PIN_AIN1 = 26, PIN_AIN2 = 25, PIN_PWMA = 27;  // motor ESQUERDO
@@ -45,11 +51,27 @@ const int   PENSAR_MS       = 900;   // MODO PENSAR: quanto tempo cada tela de r
 const float DIST_BATEU      = 8.0;   // cm: menos que isso conta como "bateu"
 const float LIMITES[3]      = {10.0, 25.0, 50.0};  // cm: separam os 4 estados
 
-const float ALFA            = 0.3;   // taxa de aprendizado (quanto aceita a novidade)
-const float GAMA            = 0.9;   // valor do futuro (quanto pensa à frente)
+// Valores PADRÃO. Em funcionamento eles viram variáveis (alfa, gama, epsDecai, rBateu...)
+// que o painel Wi-Fi pode mudar ao vivo. "Restaurar padrões" volta para estes números.
+const float ALFA_PADRAO     = 0.3;   // taxa de aprendizado (quanto aceita a novidade)
+const float GAMA_PADRAO     = 0.9;   // valor do futuro (quanto pensa à frente)
+const float EPS_DECAI_PADRAO= 0.995; // a cada passo, explora um pouco menos
 const float EPS_INICIAL     = 1.0;   // 100% tentativa aleatória no começo
 const float EPS_MIN         = 0.05;  // nunca para de explorar totalmente
-const float EPS_DECAI       = 0.995; // a cada passo, explora um pouco menos
+
+// Recompensas PADRÃO (a "professora"): é o que ensinamos ao robô
+const float R_BATEU_PADRAO  = -10.0; // chegou a menos de DIST_BATEU
+const float R_LIVRE_PADRAO  =   2.0; // foi para frente com o caminho livre
+const float R_PERTO_PADRAO  =   0.0; // foi para frente, mas já havia obstáculo perto
+const float R_ABRIU_PADRAO  =   1.0; // girou e abriu caminho
+const float R_GIRO_PADRAO   =  -0.2; // girou sem ganhar espaço
+const float R_RE_PADRAO     =  -0.5; // deu ré
+
+// Painel Wi-Fi (o robô cria a própria rede; não precisa de internet)
+const bool  WIFI_LIGADO     = true;
+const char* WIFI_NOME       = "RoboQL";
+const char* WIFI_SENHA      = "robo1234";  // mínimo de 8 caracteres
+const int   LOG_MAX         = 300;         // quantos passos o histórico (CSV) guarda
 
 // ======================= ESTADOS E AÇÕES =====================================
 // Estados (distância à frente):
@@ -72,6 +94,35 @@ bool pensar = true;   // MODO PENSAR ligado: o display mostra o que o robô pens
 float Q[N_ESTADOS][N_ACOES];
 float epsilon = EPS_INICIAL;
 uint32_t passos = 0;
+
+// Parâmetros que podem mudar em funcionamento (começam nos valores PADRÃO)
+float alfa = ALFA_PADRAO, gama = GAMA_PADRAO, epsDecai = EPS_DECAI_PADRAO;
+float rBateu = R_BATEU_PADRAO, rLivre = R_LIVRE_PADRAO, rPerto = R_PERTO_PADRAO;
+float rAbriu = R_ABRIU_PADRAO, rGiro = R_GIRO_PADRAO, rRe = R_RE_PADRAO;
+
+void restaurarPadroes() {
+  alfa = ALFA_PADRAO; gama = GAMA_PADRAO; epsDecai = EPS_DECAI_PADRAO;
+  rBateu = R_BATEU_PADRAO; rLivre = R_LIVRE_PADRAO; rPerto = R_PERTO_PADRAO;
+  rAbriu = R_ABRIU_PADRAO; rGiro = R_GIRO_PADRAO; rRe = R_RE_PADRAO;
+}
+
+// O que o robô está "pensando" agora (mostrado no painel Wi-Fi)
+struct Pensamento {
+  int etapa = 0;                 // 1 perceber, 2 escolher, 3 agir, 4 recompensa, 5 aprender
+  int s = 0, s2 = 0, a = 0;
+  float d = 0, d2 = 0, sorteio = 0, r = 0, q0 = 0, q1 = 0, mq = 0;
+  bool explorou = false;
+} P;
+
+// Histórico dos últimos passos (vira o CSV do painel)
+struct Registro { uint32_t passo; uint8_t s, a, explorou; float r, q0, q1, eps; };
+Registro hist[LOG_MAX];
+int histN = 0, histI = 0;
+void registrar(uint32_t passo, int s, int a, bool expl, float r, float q0, float q1, float eps) {
+  hist[histI] = { passo, (uint8_t)s, (uint8_t)a, (uint8_t)expl, r, q0, q1, eps };
+  histI = (histI + 1) % LOG_MAX;
+  if (histN < LOG_MAX) histN++;
+}
 
 // Estatística para mostrar que ele melhora: batidas nos últimos 50 passos
 int batidasJanela = 0, batidasUltimaJanela = 0, passosJanela = 0;
@@ -145,10 +196,10 @@ int estadoDe(float d) {
 // Aqui está a única coisa que NÓS ensinamos: o que é bom e o que é ruim.
 // O resto, o robô descobre sozinho.
 float calcularRecompensa(int acao, float d, float d2) {
-  if (d2 < DIST_BATEU) return -10.0;                        // bateu: muito ruim
-  if (acao == ACAO_FRENTE) return (d2 >= LIMITES[1]) ? 2.0 : 0.0;  // andar livre: bom
-  if (acao == ACAO_RE) return -0.5;                         // ré: custa um pouco
-  return (d2 > d + 10.0) ? 1.0 : -0.2;                      // girar: bom só se abriu caminho
+  if (d2 < DIST_BATEU) return rBateu;                              // bateu: muito ruim
+  if (acao == ACAO_FRENTE) return (d2 >= LIMITES[1]) ? rLivre : rPerto;  // andar livre: bom
+  if (acao == ACAO_RE) return rRe;                                 // ré: custa um pouco
+  return (d2 > d + 10.0) ? rAbriu : rGiro;                         // girar: bom só se abriu caminho
 }
 
 // ======================= ESCOLHA DA AÇÃO (explorar x aproveitar) =============
@@ -170,6 +221,7 @@ int escolherAcao(int s, bool &explorou, float &sorteio) {
 
 // ======================= APRENDIZADO (equação de Q-learning) =================
 // Q novo = Q velho + alfa * ( recompensa + gama * melhor Q do próximo estado - Q velho )
+// (alfa e gama são variáveis: o painel Wi-Fi pode mudá-las para os alunos experimentarem)
 float maiorQ(int s) {
   float m = Q[s][0];
   for (int i = 1; i < N_ACOES; i++) if (Q[s][i] > m) m = Q[s][i];
@@ -177,7 +229,7 @@ float maiorQ(int s) {
 }
 
 void atualizarQ(int s, int a, float r, int s2) {
-  Q[s][a] += ALFA * (r + GAMA * maiorQ(s2) - Q[s][a]);
+  Q[s][a] += alfa * (r + gama * maiorQ(s2) - Q[s][a]);
 }
 
 // ======================= MEMÓRIA (não esquece ao desligar) ===================
@@ -199,6 +251,7 @@ void resetarAprendizado() {
   memset(Q, 0, sizeof(Q));
   epsilon = EPS_INICIAL; passos = 0;
   batidasJanela = batidasUltimaJanela = passosJanela = 0;
+  histN = histI = 0;
   salvar();
   display.clearDisplay(); display.setCursor(0, 20);
   display.println("Memoria apagada!"); display.println("Robo voltou a ser bebe.");
@@ -315,7 +368,7 @@ void telaAprender(int s, int a, float q0, float q1, float r, float mq) {
     snprintf(buf, sizeof(buf), "velho %.2f", q0);       display.setCursor(0, 23); display.print(buf);
     snprintf(buf, sizeof(buf), "NOVO  %.2f", q1);       display.setCursor(0, 32); display.print(buf);
     snprintf(buf, sizeof(buf), "r=%.1f melhorQ'=%.1f", r, mq); display.setCursor(0, 43); display.print(buf);
-    snprintf(buf, sizeof(buf), "Q+=%.1f*(r+%.1f*mQ'-Q)", ALFA, GAMA); display.setCursor(0, 53); display.print(buf);
+    snprintf(buf, sizeof(buf), "Q+=%.1f*(r+%.1f*mQ'-Q)", alfa, gama); display.setCursor(0, 53); display.print(buf);
   }
   display.display();
 }
@@ -352,6 +405,8 @@ void tratarBotoes() {
   }
 }
 
+#include "painel.h"   // servidor Wi-Fi: página, /estado, /q.json, /log.csv, /ajustar
+
 // ======================= SETUP E LOOP ========================================
 void setup() {
   Serial.begin(115200);
@@ -377,25 +432,36 @@ void setup() {
   display.clearDisplay(); display.setTextSize(1); display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 10); display.println("Robo Desviador Q-learning");
   display.println(passos == 0 ? "Cerebro vazio (bebe)" : "Cerebro carregado");
+  if (WIFI_LIGADO) { iniciarPainel(); display.print("Wi-Fi: "); display.println(WIFI_NOME); display.println("192.168.4.1"); }
   display.println("Solte na arena em 3 s");
   display.display();
   delay(3000);
 }
 
+// Espera "ms" milissegundos, mas continua atendendo o painel Wi-Fi e os botões.
+void esperar(unsigned long ms) {
+  unsigned long t0 = millis();
+  while (millis() - t0 < ms) { if (WIFI_LIGADO) servidor.handleClient(); tratarBotoes(); delay(5); }
+}
+
 void loop() {
   tratarBotoes();
+  if (WIFI_LIGADO) servidor.handleClient();
 
   // 1) Percebe o mundo
   float d  = distanciaMediana();
   int   s  = estadoDe(d);
-  if (pensar) { telaPerceber(s, d); delay(PENSAR_MS); }
+  P.etapa = 1; P.d = d; P.s = s;
+  if (pensar) { telaPerceber(s, d); esperar(PENSAR_MS); }
 
   // 2) Escolhe (explorar x aproveitar)
   bool  explorou; float sorteio;
   int   a = escolherAcao(s, explorou, sorteio);
-  if (pensar) { telaEscolher(s, a, explorou, sorteio); delay(PENSAR_MS); }
+  P.etapa = 2; P.a = a; P.explorou = explorou; P.sorteio = sorteio;
+  if (pensar) { telaEscolher(s, a, explorou, sorteio); esperar(PENSAR_MS); }
 
   // 3) Executa
+  P.etapa = 3;
   if (pensar) telaAgir(a);
   executarAcao(a);
   delay(60);
@@ -407,18 +473,21 @@ void loop() {
 
   digitalWrite(PIN_LED_VERDE,    r > 0);
   digitalWrite(PIN_LED_VERMELHO, r < 0);
-  if (pensar) { telaRecompensa(d, d2, r); delay(PENSAR_MS); }
+  P.etapa = 4; P.d2 = d2; P.s2 = s2; P.r = r;
+  if (pensar) { telaRecompensa(d, d2, r); esperar(PENSAR_MS); }
 
   // 5) Aprende (só no modo APRENDENDO)
   float q0 = Q[s][a];
   float mq = maiorQ(s2);
   if (modo == APRENDENDO) {
     atualizarQ(s, a, r, s2);
-    epsilon = max(EPS_MIN, epsilon * EPS_DECAI);
+    registrar(passos + 1, s, a, explorou, r, q0, Q[s][a], epsilon);
+    epsilon = max(EPS_MIN, epsilon * epsDecai);
     passos++;
     if (passos % 20 == 0) salvar();
   }
-  if (pensar) { telaAprender(s, a, q0, Q[s][a], r, mq); delay(PENSAR_MS); }
+  P.etapa = 5; P.q0 = q0; P.q1 = Q[s][a]; P.mq = mq;
+  if (pensar) { telaAprender(s, a, q0, Q[s][a], r, mq); esperar(PENSAR_MS); }
 
   // Estatística: batidas a cada 50 passos
   if (d2 < DIST_BATEU) batidasJanela++;

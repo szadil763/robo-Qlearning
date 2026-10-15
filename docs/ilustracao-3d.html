@@ -111,6 +111,27 @@ ul.parts .sw{margin-top:5px}
 .chart .optl{stroke:var(--good);stroke-width:1.5;stroke-dasharray:4 3}
 .chart .tick.good{fill:var(--good)}
 .legend i.sq{width:10px;height:10px;border-radius:2px;display:inline-block}
+/* Laboratório e dados */
+details.panel>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:36px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary h2{margin:0}
+details.panel>summary::after{content:"abrir ▾";font:500 12px var(--mono);color:var(--accent)}
+details.panel[open]>summary::after{content:"fechar ▴"}
+details.panel[open]>summary{margin-bottom:12px}
+.lx-g{font:500 11px/1.2 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.lx-g:first-child{margin-top:0}
+.lx-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:10px}
+.lx-row label{font-size:14px}
+.lx-row output{font:500 14px var(--mono);font-variant-numeric:tabular-nums}
+.lx-row input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:2px 0;min-height:28px}
+.lx-row small{grid-column:1/-1;color:var(--muted);font-size:12px}
+.lx-row.chg output{color:var(--accent);font-weight:600}
+.ctl2{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+textarea.brain{width:100%;min-height:90px;margin-top:10px;font:12px/1.4 var(--mono);background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical}
+.mind .gs{display:flex;flex-wrap:wrap;gap:8px}
+.mind .gs button{font:600 14px var(--body);padding:10px 14px;min-height:44px;border-radius:8px;border:1px solid var(--scr-hi);background:transparent;color:var(--scr-hi);cursor:pointer}
+.mind .gs button:hover{background:var(--scr-hi);color:var(--scr)}
+.mind .res{font-size:14px}
 /* Display "mente do robô": tela escura de propósito (metáfora do OLED), nos dois temas */
 .mind{--scr:#06090D;--scr-fg:#D6EEFF;--scr-dim:#7F97A8;--scr-line:#223340;--scr-good:#3DD598;--scr-bad:#FF7070;--scr-hi:#FFB347;
   margin:0 12px 12px;border-radius:10px;background:var(--scr);color:var(--scr-fg);border:1px solid #000;box-shadow:inset 0 0 0 1px var(--scr-line);font:13px/1.45 var(--mono);overflow:hidden}
@@ -188,6 +209,7 @@ ul.parts .sw{margin-top:5px}
         <button class="btn" id="bReset" title="Zera a tabela Q: o robô volta a ser bebê">Cérebro vazio</button>
         <button class="btn" id="bTrain" title="Executa 1500 passos de uma vez, sem animação">Treinar 1500 passos</button>
         <button class="btn" id="bDemo" aria-pressed="false" title="Sem explorar e sem aprender">Demonstração</button>
+        <button class="btn" id="bGuess" aria-pressed="false" title="O robô pausa antes de escolher e você tenta adivinhar a ação">Adivinhe a ação</button>
         <button class="btn" id="bObs">Novos obstáculos</button>
         <button class="btn" id="bTrail" aria-pressed="true">Rastro</button>
       </div>
@@ -209,6 +231,26 @@ ul.parts .sw{margin-top:5px}
         </dl>
       </section>
 
+      <details class="panel" id="labPanel">
+        <summary><h2>Laboratório: mude as regras</h2></summary>
+        <div id="labBody"></div>
+        <div class="ctl2"><button class="btn" id="bLabReset">Restaurar padrões</button></div>
+        <p class="note" id="labNote">Mexa nos controles e observe. Mudar uma regra não apaga o que o robô já aprendeu: ele precisa reaprender. Para recomeçar do zero, use <b>Cérebro vazio</b>.</p>
+      </details>
+
+      <details class="panel" id="dataPanel">
+        <summary><h2>Cérebro e dados</h2></summary>
+        <div class="ctl2">
+          <button class="btn" id="bBrainSave">Baixar cérebro (JSON)</button>
+          <button class="btn" id="bBrainLoad">Carregar arquivo</button>
+          <button class="btn" id="bBrainTxt">Carregar do texto</button>
+          <button class="btn" id="bCsv">Baixar histórico (CSV)</button>
+        </div>
+        <input type="file" id="fBrain" accept=".json,application/json" hidden>
+        <textarea class="brain" id="brainTxt" spellcheck="false" aria-label="Texto do cérebro ou do histórico" placeholder="O texto do arquivo aparece aqui. Se o download não começar, copie daqui. Para carregar, cole um cérebro (JSON) aqui e use Carregar do texto."></textarea>
+        <p class="note" id="dataNote">O JSON é o mesmo formato que o robô real usa no painel Wi-Fi: treine aqui e carregue no robô, ou o contrário. O CSV abre no Excel ou no Planilhas Google (separador “;”).</p>
+      </details>
+
       <section class="panel only-obs">
         <h2>Tabela Q (o cérebro)</h2>
         <div class="tw">
@@ -228,11 +270,12 @@ ul.parts .sw{margin-top:5px}
       <section class="panel only-obs">
         <h2>O que nós ensinamos ao robô</h2>
         <dl class="rules">
-          <dt>Chegar a menos de 8 cm (bateu)</dt><dd class="neg">−10</dd>
-          <dt>Frente com caminho livre (≥ 25 cm)</dt><dd class="pos">+2</dd>
-          <dt>Girar e abrir caminho (+10 cm)</dt><dd class="pos">+1</dd>
-          <dt>Girar sem ganho</dt><dd class="neg">−0,2</dd>
-          <dt>Ré</dt><dd class="neg">−0,5</dd>
+          <dt>Chegar a menos de 8 cm (bateu)</dt><dd id="rBateu"></dd>
+          <dt>Frente com caminho livre (≥ 25 cm)</dt><dd id="rLivre"></dd>
+          <dt>Frente com obstáculo perto</dt><dd id="rPerto"></dd>
+          <dt>Girar e abrir caminho (+10 cm)</dt><dd id="rAbriu"></dd>
+          <dt>Girar sem ganho</dt><dd id="rGiro"></dd>
+          <dt>Ré</dt><dd id="rRe"></dd>
         </dl>
         <p class="note">Só a recompensa vem de nós. O resto (qual ação funciona em cada situação) o robô descobre tentando.</p>
       </section>
@@ -263,9 +306,9 @@ ul.parts .sw{margin-top:5px}
       <section class="panel only-maze">
         <h2>O que nós ensinamos ao robô</h2>
         <dl class="rules">
-          <dt>Chegar ao final</dt><dd class="pos">+100</dd>
-          <dt>Bater na parede</dt><dd class="neg">−5</dd>
-          <dt>Qualquer outra ação</dt><dd class="neg">−1</dd>
+          <dt>Chegar ao final</dt><dd id="rGoal"></dd>
+          <dt>Bater na parede</dt><dd id="rBump"></dd>
+          <dt>Qualquer outra ação</dt><dd id="rStep"></dd>
         </dl>
         <p class="note">Como o robô gasta 1 ponto por ação, ele aprende que o caminho mais curto vale mais. Aqui ele sabe em qual célula está e para onde olha. No robô real isso exige encoders nas rodas (ou marcas no chão), pois o sensor ultrassônico sozinho não diz a posição.</p>
       </section>
@@ -281,10 +324,12 @@ ul.parts .sw{margin-top:5px}
 //#sim-start
 function makeSim(){
   var CFG={ALFA:0.3,GAMA:0.9,EPS0:1,EPSMIN:0.05,DECAI:0.995,BATEU:8,LIM:[10,25,50],
+           R:{bateu:-10,livre:2,pertoFrente:0,re:-0.5,abriu:1,giroRuim:-0.2},
            FRENTE:8,GIRO:55,RE:8,SENS_X:5.3,W:120,H:80};
   var ACOES=['Frente','Esquerda','Direita','Ré'];
   var ESTADOS=['< 10 cm','10 a 25 cm','25 a 50 cm','> 50 cm'];
-  var S={Q:[],eps:1,passos:0,hist:[],winPassos:0,winBat:0,lastWin:null,demo:false,pose:null,obs:[],world:'obs'};
+  var S={Q:[],eps:1,passos:0,hist:[],log:[],lastExpl:false,winPassos:0,winBat:0,lastWin:null,demo:false,pose:null,obs:[],world:'obs'};
+  var LOGMAX=6000;
   var DEFAULT_OBS=[{t:'box',x:18,y:-14,w:14,h:14},{t:'cyl',x:-18,y:18,r:7},{t:'box',x:-2,y:-30,w:26,h:6},{t:'box',x:38,y:16,w:12,h:12},{t:'cyl',x:40,y:-18,r:6},{t:'cyl',x:-38,y:-12,r:6}];
 
   function zeroQ(){S.Q=[0,1,2,3].map(function(){return [0,0,0,0];});}
@@ -336,17 +381,18 @@ function makeSim(){
     q.forEach(function(v,i){if(v===m)idx.push(i);});
     return idx[Math.floor(Math.random()*idx.length)];}
   function choose(s){var u=Math.random();
-    if(!S.demo&&u<S.eps)return {a:Math.floor(Math.random()*4),expl:true,u:u};
-    return {a:best(s),expl:false,u:u};}
-  function reward(a,d,d2){
-    if(d2<CFG.BATEU)return -10;
-    if(a===0)return d2>=CFG.LIM[1]?2:0;
-    if(a===3)return -0.5;
-    return d2>d+10?1:-0.2;}
+    if(!S.demo&&u<S.eps){S.lastExpl=true;return {a:Math.floor(Math.random()*4),expl:true,u:u};}
+    S.lastExpl=false;return {a:best(s),expl:false,u:u};}
+  function reward(a,d,d2){var R=CFG.R;
+    if(d2<CFG.BATEU)return R.bateu;
+    if(a===0)return d2>=CFG.LIM[1]?R.livre:R.pertoFrente;
+    if(a===3)return R.re;
+    return d2>d+10?R.abriu:R.giroRuim;}
   function learn(s,a,r,s2){var q0=S.Q[s][a];
     if(S.demo)return {q0:q0,q1:q0};
     var mx=Math.max.apply(null,S.Q[s2]);
     var q1=q0+CFG.ALFA*(r+CFG.GAMA*mx-q0);S.Q[s][a]=q1;
+    S.log.push({passo:S.passos+1,estado:s,acao:a,expl:S.lastExpl,r:r,q0:q0,q1:q1,eps:S.eps});if(S.log.length>LOGMAX)S.log.shift();
     return {q0:q0,q1:q1};}
   function afterStep(d2){
     if(!S.demo){S.eps=Math.max(CFG.EPSMIN,S.eps*CFG.DECAI);S.passos++;}
@@ -381,13 +427,13 @@ function makeSim(){
       if(ok){S.obs=list;S.pose=freePose();return;}}
     S.obs=DEFAULT_OBS.map(function(o){return Object.assign({},o);});S.pose=freePose();}
   function reset(keepObs){
-    zeroQ();S.eps=CFG.EPS0;S.passos=0;S.hist=[];S.winPassos=0;S.winBat=0;S.lastWin=null;
+    zeroQ();S.eps=CFG.EPS0;S.passos=0;S.hist=[];S.log=[];S.winPassos=0;S.winBat=0;S.lastWin=null;
     if(!keepObs)S.obs=DEFAULT_OBS.map(function(o){return Object.assign({},o);});
     S.pose=S.obs===null?{x:-48,y:0,th:0}:(clearAround({x:-48,y:0,th:0})?{x:-48,y:0,th:0}:freePose());}
   reset(false);
   /* ===== LABIRINTO (6 x 4 células de 20 cm; parede de 1,5 cm) ===== */
   var MZ={C:6,R:4,CELL:20,T:1.5,wv:null,wh:null,Q:null,eps:1,ep:0,steps:0,hist:[],best:null,optimal:0,
-          c:0,r:0,th:0,over:false,seed:42,ALFA:0.5,GAMA:0.95,EPSMIN:0.05,EPS_EP:0.93,MAXSTEPS:150,
+          log:[],c:0,r:0,th:0,over:false,seed:42,ALFA:0.5,GAMA:0.95,EPSMIN:0.05,EPS_EP:0.93,MAXSTEPS:150,
           R_GOAL:100,R_BUMP:-5,R_STEP:-1};
   var DX=[1,0,-1,0],DY=[0,1,0,-1],HALF=Math.PI/2,stash=null;
   function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -430,7 +476,7 @@ function makeSim(){
     return list;}
   function mZeroQ(){MZ.Q=[];for(var i=0;i<MZ.C*MZ.R*4;i++)MZ.Q.push([0,0,0]);}
   function mBegin(){MZ.c=0;MZ.r=0;MZ.th=0;MZ.steps=0;MZ.over=false;S.pose=mPose();}
-  function mReset(){mZeroQ();MZ.eps=1;MZ.ep=0;MZ.hist=[];MZ.best=null;mBegin();}
+  function mReset(){mZeroQ();MZ.eps=1;MZ.ep=0;MZ.hist=[];MZ.log=[];MZ.best=null;mBegin();}
   function mNewMaze(){var base=Math.floor(Math.random()*100000),k;
     for(k=0;k<80;k++){mGen(base+k);var o=mOptimal();if(o>=12&&o<=24)break;}
     MZ.optimal=mOptimal();mReset();S.obs=mObsList();S.pose=mPose();}
@@ -447,7 +493,9 @@ function makeSim(){
   function mLearn(s,a,o){var s2=mIdx(MZ.c,MZ.r,mHead()),q0=MZ.Q[s][a];
     if(S.demo)return {q0:q0,q1:q0};
     var tgt=o.done?o.rew:o.rew+MZ.GAMA*Math.max.apply(null,MZ.Q[s2]);
-    var q1=q0+MZ.ALFA*(tgt-q0);MZ.Q[s][a]=q1;return {q0:q0,q1:q1};}
+    var q1=q0+MZ.ALFA*(tgt-q0);MZ.Q[s][a]=q1;
+    MZ.log.push({tent:MZ.ep+1,passo:MZ.steps,estado:s,acao:a,r:o.rew,q0:q0,q1:q1,eps:MZ.eps});if(MZ.log.length>LOGMAX)MZ.log.shift();
+    return {q0:q0,q1:q1};}
   function mFinish(done){MZ.ep++;MZ.hist.push({steps:MZ.steps,done:done});if(MZ.hist.length>40)MZ.hist.shift();
     if(done&&(MZ.best===null||MZ.steps<MZ.best))MZ.best=MZ.steps;
     if(!S.demo)MZ.eps=Math.max(MZ.EPSMIN,MZ.eps*MZ.EPS_EP);
@@ -457,6 +505,21 @@ function makeSim(){
   function mTrain(n){var was=S.demo;S.demo=false;
     for(var e=0;e<n;e++){mBegin();var end=null,g=0;while(!end&&g++<1000)end=mAtomic();}
     S.demo=was;mBegin();}
+
+  /* ===== cérebro (JSON, mesmo formato do painel Wi-Fi do robô) e histórico (CSV) ===== */
+  function exportBrain(){return {formato:'robo-qlearning-q',versao:1,estados:4,acoes:4,q:S.Q.map(function(r){return r.slice();}),
+    epsilon:S.eps,passos:S.passos,alfa:CFG.ALFA,gama:CFG.GAMA};}
+  function importBrain(o){
+    if(!o||o.formato!=='robo-qlearning-q'||o.estados!==4||o.acoes!==4||!Array.isArray(o.q)||o.q.length!==4)throw new Error('Arquivo não é um cérebro do robô desviador (4 estados × 4 ações).');
+    var q=o.q.map(function(r){if(!Array.isArray(r)||r.length!==4)throw new Error('Tabela Q com formato inválido.');return r.map(function(v){v=+v;if(!isFinite(v))throw new Error('Há um valor que não é número.');return v;});});
+    S.Q=q;if(isFinite(o.epsilon))S.eps=Math.min(1,Math.max(0,+o.epsilon));if(isFinite(o.passos))S.passos=Math.max(0,Math.floor(+o.passos));}
+  function num(v){return (Math.round(v*1000)/1000).toString().replace('.',',');}
+  function csv(){var L,out;
+    if(S.world==='maze'){out=['tentativa;passo;estado;acao;recompensa;q_antes;q_depois;epsilon'];
+      MZ.log.forEach(function(e){out.push([e.tent,e.passo,e.estado,['frente','girar_esq','girar_dir'][e.acao],num(e.r),num(e.q0),num(e.q1),num(e.eps)].join(';'));});}
+    else{out=['passo;estado;acao;explorou;recompensa;q_antes;q_depois;epsilon'];
+      S.log.forEach(function(e){out.push([e.passo,e.estado,['frente','esquerda','direita','re'][e.acao],e.expl?1:0,num(e.r),num(e.q0),num(e.q1),num(e.eps)].join(';'));});}
+    return out.join('\n')+'\n';}
   function setWorld(w){
     if(w===S.world)return;
     if(w==='maze'){stash={obs:S.obs,pose:Object.assign({},S.pose)};
@@ -468,7 +531,7 @@ function makeSim(){
     stateOf:stateOf,move:move,choose:choose,reward:reward,learn:learn,afterStep:afterStep,
     atomicStep:atomicStep,reset:reset,randomizeObstacles:randomizeObstacles,freePose:freePose,best:best,
     MZ:MZ,setWorld:setWorld,mNewMaze:mNewMaze,mReset:mReset,mChoose:mChoose,mMove:mMove,mApply:mApply,mLearn:mLearn,
-    mCheckEnd:mCheckEnd,mBegin:mBegin,mAtomic:mAtomic,mTrain:mTrain,mHead:mHead,mIdx:mIdx,mCenter:mCenter,mPose:mPose,mOptimal:mOptimal};
+    exportBrain:exportBrain,importBrain:importBrain,csv:csv,mCheckEnd:mCheckEnd,mBegin:mBegin,mAtomic:mAtomic,mTrain:mTrain,mHead:mHead,mIdx:mIdx,mCenter:mCenter,mPose:mPose,mOptimal:mOptimal};
 }
 //#sim-end
 
@@ -682,7 +745,7 @@ function drawOled(){
   else if(ph===1){
     if(S.demo)L.push('DEMO: nao explora','Maior nota vence');
     else L.push('dado '+st.u.toFixed(2)+' eps '+eps.toFixed(2),st.expl?'dado<eps: EXPLORAR':'dado>=eps: APROVEITA');
-    L.push('Escolhi: '+nm);hi=st.a;showQ=true;}
+    L.push('Escolhi: '+(waitGuess?'???':nm));hi=waitGuess?-1:st.a;showQ=true;}
   else if(ph===2){L.push('Vou executar:','',nm);}
   else if(ph===3){var r=maze?st.o.rew:st.r;
     if(!maze)L.push('antes '+f0(st.d)+' depois '+f0(st.d2));
@@ -730,7 +793,7 @@ function minR(){return mode==='parts'?30:16;}
 var PHN=['Perceber','Escolher','Agir','Recompensa','Aprender'];
 var PHD=[0.55,0.55,0.95,0.55,0.6];
 var world='obs',running=!reduced,speed=1,st=null,hl={row:null,col:null},lastSay='';
-var chipsEl=$('#chips'),sayEl=$('#say'),mindEl=$('#mind'),mindDirty=false,tlog=[];
+var chipsEl=$('#chips'),sayEl=$('#say'),mindEl=$('#mind'),mindDirty=false,tlog=[],guessOn=false,waitGuess=false,guess={n:0,ok:0};
 chipsEl.innerHTML=PHN.map(function(n,i){return '<div class="chip"><b>'+(i+1)+'</b>'+n+'</div>';}).join('');
 var chipEls=chipsEl.querySelectorAll('.chip');
 function markChips(i){chipEls.forEach(function(c,k){c.classList.toggle('on',k===i);});mindDirty=true;}
@@ -747,12 +810,16 @@ function qBars(row,names,pick,floor){
   return row.map(function(v,i){var w=Math.min(50,Math.abs(v)/mx*50);
     return '<div class="qr'+(i===pick?' pick':'')+'"><span class="nm">'+(names.length===3?['Frente','Gira esq.','Gira dir.'][i]:names[i])+'</span><span class="tr"><span class="fl'+(v<0?' n':'')+'" style="width:'+w+'%;'+(v<0?'right:50%':'left:50%')+'"></span></span><span class="vl">'+fnum(v,1)+'</span></div>';}).join('');}
 function why(){
-  if(world==='maze'){var o=st.o;return o.done?'chegou ao final: +100':o.bump?'bateu na parede: −5':'cada ação custa 1 ponto: −1';}
+  if(world==='maze'){var o=st.o;return o.done?'chegou ao final':o.bump?'bateu na parede':'cada ação gasta um pouco (por isso o caminho curto vale mais)';}
   var a=st.a,d=st.d,d2=st.d2;
   if(d2<CFG.BATEU)return 'ficou a menos de 8 cm: contou como batida';
-  if(a===0)return d2>=CFG.LIM[1]?'andou com o caminho livre: +2':'foi para frente, mas já estava perto: 0';
-  if(a===3)return 'dar ré custa um pouco: −0,5';
-  return d2>d+10?'girou e abriu caminho: +1':'girou sem ganhar espaço: −0,2';}
+  if(a===0)return d2>=CFG.LIM[1]?'andou com o caminho livre':'foi para frente, mas já estava perto';
+  if(a===3)return 'dar ré tem um custo';
+  return d2>d+10?'girou e abriu caminho':'girou sem ganhar espaço';}
+function guessGate(i){
+  if(i!==1||!guessOn||mode!=='arena')return;
+  st.hold=lastSay;st.guessPick=null;waitGuess=true;
+  say('Pausa! Qual ação você acha que o robô vai escolher? Olhe a tabela e escolha no display.');}
 function mindModel(){
   var maze=world==='maze',M=sim.MZ,names=maze?MACOES:ACOES,floor=maze?20:4,row=maze?M.Q[st.s]:S.Q[st.s],eps=maze?M.eps:S.eps,
       ph=st.ph,nm=names[st.a],h='',th='',kind='',pieces=[];
@@ -768,6 +835,13 @@ function mindModel(){
     pieces.push('<div><div class="k">O que sei sobre esta situação</div>'+qBars(row,names,-1,floor)+'</div>');
   }else if(ph===1){
     kind='ESCOLHER';
+    if(waitGuess){
+      th='Qual ação eu vou escolher? Dica: se o dado cair abaixo de ε, sorteio; senão, vale a maior nota.';
+      pieces.push('<div><div class="k">Sua previsão · chance de explorar (ε): '+f0(eps*100)+'%</div><div class="gs">'+names.map(function(n,i){return '<button data-guess="'+i+'">'+n+'</button>';}).join('')+'</div></div>');
+      pieces.push('<div><div class="k">Notas desta situação</div>'+qBars(row,names,-1,floor)+'</div>');
+      return {kind:kind,th:th,body:pieces.join(''),n:ph+1};}
+    if(guessOn&&st.guessPick!==null&&st.guessPick!==undefined){var okk=st.guessPick===st.a;
+      pieces.push('<div class="res '+(okk?'pos':'neg')+'">Você previu <b>'+names[st.guessPick]+'</b>: '+(okk?'acertou ✔':'errou ✘ (ele escolheu '+nm+')')+'</div>');}
     if(S.demo){th='Estou só demonstrando: escolho a ação de maior nota, sem arriscar.';
       pieces.push('<div class="fx">Sem dado, sem explorar: <em>maior nota vence</em>.</div>');}
     else{
@@ -803,9 +877,10 @@ function mindModel(){
 function flushMind(){
   mindDirty=false;if(!st||!mindEl)return;
   var m=mindModel();
+  var plac=guessOn?' · palpites '+guess.ok+'/'+guess.n:'';
   var passo=world==='maze'?('tentativa '+(sim.MZ.ep+1)+' · ação '+(sim.MZ.steps+(st.ph>=3?0:1))):('passo '+(S.passos+(st.ph===4?0:1)));
   var logh=tlog.length?'<div class="log"><div class="k">Últimos pensamentos</div>'+tlog.slice().reverse().map(function(t){return '<div>'+t+'</div>';}).join('')+'</div>':'';
-  mindEl.innerHTML='<div class="mh"><span>Mente do robô · etapa <b>'+m.n+'/5 '+m.kind+'</b></span><span>'+(S.demo?'demonstração':passo)+'</span></div>'+
+  mindEl.innerHTML='<div class="mh"><span>Mente do robô · etapa <b>'+m.n+'/5 '+m.kind+'</b></span><span>'+(S.demo?'demonstração':passo)+plac+'</span></div>'+
     '<div class="th">'+m.th+'</div><div class="mb">'+m.body+'</div>'+logh;
   drawOled();}
 function logThought(){
@@ -814,7 +889,7 @@ function logThought(){
     (S.demo?'':' → Q '+fnum(st.q0,1)+'→'+fnum(st.q1,1));
   tlog.push(t);if(tlog.length>4)tlog.shift();}
 
-function newStep(){if(world==='maze'&&sim.MZ.over){sim.mBegin();clearTrail();}st={ph:0,t:0,pose0:Object.assign({},S.pose)};enter(0);}
+function newStep(){waitGuess=false;if(world==='maze'&&sim.MZ.over){sim.mBegin();clearTrail();}st={ph:0,t:0,pose0:Object.assign({},S.pose)};enter(0);}
 function enter(i){
   if(world==='maze'){enterM(i);return;}
   st.ph=i;st.t=0;
@@ -831,11 +906,11 @@ function enter(i){
   else{st.mq=Math.max.apply(null,S.Q[st.s2]);var L=sim.learn(st.s,st.a,st.r,st.s2);st.q0=L.q0;st.q1=L.q1;sim.afterStep(st.d2);logThought();
     say(S.demo?'Modo demonstração: a tabela não muda.':'Atualiza a nota de <b>'+ESTADOS[st.s]+' / '+ACOES[st.a]+'</b>: <b>'+f1(L.q0)+' → '+f1(L.q1)+'</b>. É aqui que ele aprende.');
     renderQ(true);renderStats();renderChart();drawOled();}
-  markChips(i);
+  guessGate(i);markChips(i);
   if(i<4)renderQ(false);
 }
 function advance(dt){
-  if(!running||mode!=='arena')return;
+  if(!running||mode!=='arena'||waitGuess)return;
   st.t+=dt*speed;var guard=0;
   while(st.t>=PHD[st.ph]&&guard++<80){var left=st.t-PHD[st.ph];
     if(st.ph===4)newStep();else enter(st.ph+1);st.t=left;}}
@@ -897,7 +972,7 @@ function enterM(i){
     var t=S.demo?'Modo demonstração: a tabela não muda.':'Atualiza a nota dessa situação e ação: <b>'+f1(L.q0)+' → '+f1(L.q1)+'</b>.';
     if(end)t+=end.done?' <b>Chegou!</b> Tentativa '+M.ep+' em '+end.steps+' passos (ideal: '+M.optimal+'). Volta ao início.':' Tempo esgotado em '+end.steps+' passos. Volta ao início.';
     logThought();say(t);renderMaze();drawOled();}
-  markChips(i);
+  guessGate(i);markChips(i);
 }
 function renderMaze(){
   var M=sim.MZ;
@@ -924,6 +999,73 @@ Object.keys(parts).forEach(function(k){var p=parts[k];
   if(p.label){var d=document.createElement('div');d.className='lab';d.innerHTML='<i class="sw'+(p.printed?'':' buy')+'"></i>'+p.label;labelsEl.appendChild(d);p.el=d;
     listHtml+='<li><i class="sw'+(p.printed?'':' buy')+'"></i><span>'+p.label+'<small>'+p.spec+'</small></span></li>';}});
 partsList.innerHTML=listHtml;
+
+
+/* ================= LABORATÓRIO (parâmetros e recompensas editáveis) ================= */
+var MZ_=sim.MZ;
+var LABS={
+ obs:[
+  {g:'Como ele aprende',o:CFG,k:'ALFA',n:'α · taxa de aprendizado',min:0.05,max:1,st:0.05,t:'Quanto ele aceita a novidade. Alto demais: esquece o que sabia a cada passo.'},
+  {o:CFG,k:'GAMA',n:'γ · olhar para o futuro',min:0,max:0.99,st:0.01,t:'Zero: só pensa no que ganha agora. Perto de 1: pensa nas consequências.'},
+  {o:CFG,k:'DECAI',n:'Queda do ε por passo',min:0.98,max:0.9995,st:0.0005,d:4,t:'Quanto mais perto de 1, mais tempo ele passa experimentando ações ao acaso.'},
+  {g:'O que é bom e ruim (recompensas)',o:CFG.R,k:'bateu',n:'Bater (menos de 8 cm)',min:-30,max:0,st:1,t:'E se bater custasse quase nada?'},
+  {o:CFG.R,k:'livre',n:'Frente com caminho livre',min:0,max:5,st:0.5,t:'O prêmio por andar quando há espaço.'},
+  {o:CFG.R,k:'pertoFrente',n:'Frente com obstáculo perto',min:-3,max:3,st:0.5,t:'Teste: e se andar para perto de coisas desse um prêmio?'},
+  {o:CFG.R,k:'abriu',n:'Girar e abrir caminho',min:0,max:3,st:0.5,t:'Prêmio por virar e achar espaço.'},
+  {o:CFG.R,k:'giroRuim',n:'Girar sem ganho',min:-2,max:0,st:0.1,t:'Pune girar à toa.'},
+  {o:CFG.R,k:'re',n:'Ré',min:-2,max:0,st:0.1,t:'Custo de dar ré.'}],
+ maze:[
+  {g:'Como ele aprende',o:MZ_,k:'ALFA',n:'α · taxa de aprendizado',min:0.1,max:1,st:0.05,t:'Quanto ele aceita a novidade.'},
+  {o:MZ_,k:'GAMA',n:'γ · olhar para o futuro',min:0.5,max:0.99,st:0.01,t:'Perto de 1: o valor do final se espalha mais longe.'},
+  {o:MZ_,k:'EPS_EP',n:'Queda do ε por tentativa',min:0.8,max:0.99,st:0.01,t:'Mais perto de 1: explora por mais tentativas.'},
+  {g:'O que é bom e ruim (recompensas)',o:MZ_,k:'R_GOAL',n:'Chegar ao final',min:10,max:200,st:10,t:'O prêmio da chegada.'},
+  {o:MZ_,k:'R_BUMP',n:'Bater na parede',min:-30,max:0,st:1,t:'Punição ao tentar atravessar a parede.'},
+  {o:MZ_,k:'R_STEP',n:'Cada ação',min:-5,max:0,st:0.5,t:'Custo de gastar uma ação. Com 0, nada incentiva o caminho curto.'}]};
+Object.keys(LABS).forEach(function(w){LABS[w].forEach(function(x){x.def=x.o[x.k];});});
+var labBody=$('#labBody');
+function fmtLab(x,v){return (x.d!==undefined?v.toFixed(x.d):(Math.abs(v)<10&&x.st<1?v.toFixed(x.st<0.1?2:(x.st<1?1:0)):String(Math.round(v)))).replace('.',',').replace('-','−');}
+function renderLab(){
+  var html='';
+  LABS[world].forEach(function(x,i){var v=x.o[x.k];
+    if(x.g)html+='<div class="lx-g">'+x.g+'</div>';
+    html+='<div class="lx-row'+(v!==x.def?' chg':'')+'"><label for="lx'+i+'">'+x.n+'</label><output id="lo'+i+'">'+fmtLab(x,v)+'</output>'+
+      '<input type="range" id="lx'+i+'" data-i="'+i+'" min="'+x.min+'" max="'+x.max+'" step="'+x.st+'" value="'+v+'"><small>'+x.t+'</small></div>';});
+  labBody.innerHTML=html;renderRules();}
+labBody.addEventListener('input',function(e){var t=e.target;if(t.type!=='range')return;
+  var x=LABS[world][+t.dataset.i],v=parseFloat(t.value);x.o[x.k]=v;
+  $('#lo'+t.dataset.i).textContent=fmtLab(x,v);t.closest('.lx-row').classList.toggle('chg',v!==x.def);
+  renderRules();mindDirty=true;});
+$('#bLabReset').onclick=function(){LABS[world].forEach(function(x){x.o[x.k]=x.def;});renderLab();mindDirty=true;};
+function setRule(id,v){var el=$(id);if(!el)return;el.textContent=(v>0?'+':'')+fr(v);el.className=v>0?'pos':v<0?'neg':'';}
+function renderRules(){
+  var R=CFG.R;setRule('#rBateu',R.bateu);setRule('#rLivre',R.livre);setRule('#rPerto',R.pertoFrente);setRule('#rAbriu',R.abriu);setRule('#rGiro',R.giroRuim);setRule('#rRe',R.re);
+  setRule('#rGoal',MZ_.R_GOAL);setRule('#rBump',MZ_.R_BUMP);setRule('#rStep',MZ_.R_STEP);}
+
+/* ================= CÉREBRO E DADOS ================= */
+var brainTxt=$('#brainTxt'),dataNote=$('#dataNote'),noteDef=dataNote.textContent;
+function saveText(name,text,mime){
+  brainTxt.value=text;
+  try{var b=new Blob([text],{type:mime}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    dataNote.textContent='Arquivo “'+name+'” gerado. Se o download não começou, copie o texto do campo acima.';}
+  catch(e){dataNote.textContent='Não foi possível baixar aqui. Copie o texto do campo acima e salve num arquivo “'+name+'”.';}}
+function brainOnlyObs(){if(world==='maze'){dataNote.textContent='O cérebro em JSON vale só para o cenário Obstáculos (o do robô real). O histórico CSV funciona nos dois.';return false;}return true;}
+$('#bBrainSave').onclick=function(){if(!brainOnlyObs())return;saveText('cerebro-robo.json',JSON.stringify(sim.exportBrain()),'application/json');};
+$('#bCsv').onclick=function(){saveText('historico-robo.csv',sim.csv(),'text/csv');};
+function loadBrainText(t){
+  try{sim.importBrain(JSON.parse(t));tlog=[];clearTrail();newStep();renderAll();dataNote.textContent='Cérebro carregado: '+S.passos+' passos de experiência, exploração em '+f0(S.eps*100)+'%.';}
+  catch(e){dataNote.textContent='Não foi possível carregar: '+e.message;}}
+$('#bBrainTxt').onclick=function(){if(brainOnlyObs())loadBrainText(brainTxt.value);};
+$('#bBrainLoad').onclick=function(){if(brainOnlyObs())$('#fBrain').click();};
+$('#fBrain').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){brainTxt.value=String(r.result);loadBrainText(String(r.result));};r.readAsText(f);e.target.value='';};
+
+/* ================= ADIVINHE A AÇÃO ================= */
+$('#bGuess').onclick=function(){guessOn=!guessOn;this.setAttribute('aria-pressed',String(guessOn));
+  if(!guessOn&&waitGuess){waitGuess=false;say(st.hold||'');}
+  if(guessOn)guess={n:0,ok:0};mindDirty=true;};
+mindEl.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-guess]');if(!b||!waitGuess)return;
+  var pick=+b.dataset.guess;guess.n++;if(pick===st.a)guess.ok++;st.guessPick=pick;waitGuess=false;say(st.hold||'');mindDirty=true;});
 
 /* ================= CONTROLES ================= */
 function setMode(m){
@@ -957,12 +1099,12 @@ $('#bTrain').onclick=function(){
 var layoutEl=$('.layout');
 function setWorld(w){
   if(w===world)return;
-  tlog=[];sim.setWorld(w);world=w;layoutEl.dataset.world=w;
+  tlog=[];waitGuess=false;sim.setWorld(w);world=w;layoutEl.dataset.world=w;
   document.querySelectorAll('#worlds button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.world===w));});
   mazeG.visible=(w==='maze')&&mode==='arena';
   $('#bTrain').textContent=w==='maze'?'Treinar 50 tentativas':'Treinar 1500 passos';
   $('#bObs').textContent=w==='maze'?'Novo labirinto':'Novos obstáculos';
-  clearTrail();rebuildObstacles();newStep();renderAll();}
+  renderLab();clearTrail();rebuildObstacles();newStep();renderAll();}
 document.querySelectorAll('#worlds button').forEach(function(b){b.onclick=function(){setWorld(b.dataset.world);};});
 var bDemo=$('#bDemo');
 bDemo.onclick=function(){S.demo=!S.demo;bDemo.setAttribute('aria-pressed',String(S.demo));mindDirty=true;drawOled();};
@@ -1020,7 +1162,7 @@ function frame(now){
 }
 
 /* ================= INÍCIO ================= */
-rebuildObstacles();renderAll();newStep();syncPlay();setCam('geral');
+renderLab();rebuildObstacles();renderAll();newStep();syncPlay();setCam('geral');
 if(reduced)sayEl.innerHTML='Animação pausada porque o sistema pede menos movimento. Use Continuar para ver o robô aprender.';
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawOled);
 requestAnimationFrame(frame);

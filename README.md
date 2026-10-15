@@ -13,6 +13,7 @@ Robô didático com peças impressas em 3D que **aprende sozinho a desviar de ob
 - Botão de modo: alterna entre **APRENDENDO** e **DEMONSTRAÇÃO** (usa o que aprendeu, sem explorar).
 - Botão de reset (segurar 2 s): apaga a memória e o robô volta a ser "bebê" para repetir o experimento.
 - **Modo pensar** (toque curto no botão de reset): o display mostra, etapa por etapa, o que o robô pensa: 1/5 percebe (distância e estado), 2/5 escolhe (o "dado" contra o epsilon: explorar ou aproveitar), 3/5 age, 4/5 recompensa e 5/5 aprende (a conta do Q-learning com os números reais: nota velha → nota nova). Desligado, o display volta a mostrar a tabela Q inteira, e o robô anda mais rápido. O tempo de cada tela é `PENSAR_MS` no bloco `AJUSTES`.
+- **Painel Wi-Fi:** o robô cria a rede `RoboQL` (senha `robo1234`, mude em `painel.h`/`AJUSTES`). Abra `http://192.168.4.1` no celular ou computador para ver a tabela Q e o raciocínio ao vivo (dá para projetar), mudar α, γ, ε e as recompensas **sem regravar o código**, baixar o histórico (CSV) e salvar/carregar o cérebro (JSON).
 - A ilustração 3D tem o mesmo painel **Mente do robô**, com barras das notas, o dado, a recompensa e a fórmula preenchida, além do histórico dos últimos pensamentos.
 
 ## Como funciona (resumo)
@@ -31,14 +32,22 @@ Robô didático com peças impressas em 3D que **aprende sozinho a desviar de ob
 robo-desviador-ql/
 ├── README.md
 ├── CLAUDE.md                  contexto para trabalhar com Claude Code
-├── firmware/robo_desviador/   código Arduino (ESP32)
+├── firmware/robo_desviador/   código Arduino (ESP32): .ino + painel.h (Wi-Fi)
 ├── cad/chassi_desviador.scad  chassi paramétrico (OpenSCAD)
 └── docs/
     ├── lista-de-materiais.md
     ├── ligacoes.md            pinagem e alimentação
     ├── roteiro-de-aula.md     2 aulas de 50 min
+    ├── atividades/            fichas de experimento para os alunos
     └── ilustracao-3d.html     ilustração 3D interativa (abre no navegador)
 ```
+
+## Para a sala de aula
+
+- `docs/atividades/`: 3 fichas de experimento (recompensas; α, γ e ε; pensando como o robô) com quadro de resultados e critérios de avaliação.
+- **Laboratório** na ilustração 3D e no painel Wi-Fi: os alunos mudam as regras e veem o efeito.
+- **Adivinhe a ação:** o simulador pausa antes de cada escolha e o aluno tenta prever.
+- **Cérebro (JSON):** treine no simulador e carregue no robô (ou o contrário). Serve de plano B quando falta tempo de aula.
 
 ## Início rápido
 

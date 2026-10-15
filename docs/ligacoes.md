@@ -50,6 +50,10 @@ HC-SR04 ECHO ──[1 kΩ]──┬── GPIO 18 (ESP32)
 - Motores N20 de 6 V ligados em ~7,4 V: o código limita o PWM a 200/255 (≈5,9 V efetivos). Não aumente `VELOCIDADE` sem medir.
 - Nunca ligue o ESP32 pela USB e pela bateria ao mesmo tempo sem saber como seu módulo trata isso: desligue a chave da bateria ao programar.
 
+## Painel Wi-Fi (sem pinos extras)
+
+O ESP32 cria a rede `RoboQL` (senha `robo1234`) e serve o painel em `http://192.168.4.1`. Não precisa de internet nem de fiação nova. Sem Wi-Fi, ponha `WIFI_LIGADO = false` no firmware. Com o Wi-Fi ligado o consumo sobe um pouco: confira se a bateria e o regulador de 5 V aguentam (o rádio tem picos de corrente).
+
 ## Testes antes de montar tudo
 
 1. Display aceso e mostrando a tela inicial.

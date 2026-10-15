@@ -29,5 +29,9 @@ Código, comentários, documentação e mensagens em **português do Brasil**.
 
 - Modo pensar: as 5 telas do OLED (`telaPerceber`…`telaAprender`) espelham o painel "Mente do robô" e o OLED da ilustração 3D. Se mudar o ciclo ou a fórmula, atualizar os três. O botão de reset tem toque curto (alterna o modo pensar) e 2 s (apaga a memória): manter a documentação em dia.
 
+- Parâmetros editáveis: `alfa`, `gama`, `epsDecai` e as recompensas (`rBateu`…`rRe`) são variáveis no firmware (valores `*_PADRAO` no bloco AJUSTES), editáveis pelo painel Wi-Fi (`painel.h`) e pelo Laboratório da ilustração 3D. Limites dos controles: manter iguais nos três lugares (3D, `rotaAjustar()` e a página do painel).
+- Formato do cérebro (JSON `robo-qlearning-q`, 4 estados × 4 ações) é compartilhado entre simulador e robô: se mudar o tamanho da tabela Q, atualizar `exportBrain/importBrain` (HTML) e `cerebroJson/lerCerebro` (`painel.h`).
+- Painel Wi-Fi e fichas nunca foram testados no robô real (só compilação com stubs e testes do simulador).
+
 ## Projeto irmão
 Robô 2 (identificador de gestos/cartões, aprendizado supervisionado) será um repositório separado. Manter o mesmo padrão de pastas.
